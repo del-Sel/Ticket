@@ -1,0 +1,129 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#b51f2d" />
+    <title>Mesa de reclamos | Ful-Mar</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app-shell">
+      <header class="topbar">
+        <a class="brand" href="#dashboard" aria-label="Ir al inicio">
+          <img class="brand-logo" src="ful-mar-logo.png" alt="Ful-Mar" />
+          <span class="brand-title">Seguimiento de reclamos</span>
+        </a>
+        <div class="topbar-actions">
+          <label class="role-switcher">
+            <span>Perfil</span>
+            <select id="roleSelect" aria-label="Perfil activo">
+              <option value="calidad">Atención / Calidad</option>
+              <option value="sistemas">Sistemas</option>
+            </select>
+          </label>
+          <button class="avatar" type="button" title="Usuario actual">NA</button>
+        </div>
+      </header>
+
+      <div class="layout">
+        <main class="main-content">
+          <section id="dashboardView" class="view" data-view="dashboard">
+            <div class="page-heading">
+              <div>
+                <h1>Reclamos</h1>
+              </div>
+              <a class="button button-primary" href="#new"><span>＋</span> Registrar reclamo</a>
+            </div>
+            <div class="section-toolbar">
+              <div>
+                <h2>Seguimiento de requerimientos a Sistemas</h2>
+                <span class="muted" id="resultCount">0 tickets</span>
+              </div>
+              <div class="toolbar-controls">
+                <label class="search-box">
+                  <span aria-hidden="true">⌕</span>
+                  <input id="searchInput" type="search" placeholder="Buscar por número, cliente o asunto" />
+                </label>
+                <select id="statusFilter" class="select-control" aria-label="Filtrar por estado">
+                  <option value="all">Todos los estados</option>
+                  <option value="Nuevo">Nuevo</option>
+                  <option value="Derivado a Sistemas">Derivado a Sistemas</option>
+                  <option value="En análisis">En análisis</option>
+                  <option value="Resuelto por Sistemas">Resuelto por Sistemas</option>
+                  <option value="En verificación">En verificación</option>
+                  <option value="Cerrado">Cerrado</option>
+                </select>
+              </div>
+            </div>
+            <div class="ticket-table-wrap">
+              <table class="ticket-table">
+                <thead>
+                  <tr>
+                    <th>Ticket</th>
+                    <th>Fecha</th>
+                    <th>Razón social</th>
+                    <th>Requerimiento</th>
+                    <th>Operador</th>
+                    <th>Solicitado a</th>
+                    <th>Prioridad</th>
+                    <th>Estado</th>
+                    <th>Fecha de cierre</th>
+                    <th>Verificado</th>
+                  </tr>
+                </thead>
+                <tbody id="ticketTableBody"></tbody>
+              </table>
+              <div id="emptyState" class="empty-state hidden">
+                <div class="empty-icon">⌕</div>
+                <h3>No hay tickets para mostrar</h3>
+                <p>Probá con otro filtro o registrá un nuevo reclamo.</p>
+                <a class="button button-secondary" href="#new">Registrar reclamo</a>
+              </div>
+            </div>
+          </section>
+
+          <section id="newView" class="view hidden" data-view="new">
+            <div class="page-heading compact-heading">
+              <div>
+                <a class="back-link" href="#dashboard">← Volver al panel</a>
+                <h1>Registrar reclamo</h1>
+              </div>
+            </div>
+            <form id="newTicketForm" class="form-layout">
+              <div class="form-card">
+                <div class="form-card-heading">
+                  <div class="step-badge">01</div>
+                  <div><h2>Datos del reclamo</h2></div>
+                </div>
+                <div class="form-grid two-col">
+                  <label class="field"><span>Cliente <em>*</em></span><input name="customer" required placeholder="Nombre o razón social" /></label>
+                  <label class="field"><span>Contacto del cliente</span><input name="contact" placeholder="Email o teléfono" /></label>
+                  <label class="field field-span-2"><span>Asunto <em>*</em></span><input name="subject" required placeholder="Resumen breve del reclamo" /></label>
+                  <label class="field"><span>Tipología <em>*</em></span><select name="typology" required><option value="Reclamo de cliente">Reclamo de cliente</option><option value="Consulta">Consulta</option><option value="Auditoría">Auditoría</option><option value="No conformidad interna">No conformidad interna</option></select></label>
+                  <label class="field"><span>Sector emisor <em>*</em></span><select name="sourceSector" required><option value="Atención al Cliente">Atención al Cliente</option><option value="Gestión de Calidad">Gestión de Calidad</option><option value="Comercial">Comercial</option><option value="Administración">Administración</option><option value="Logística">Logística</option></select></label>
+                  <label class="field field-span-2"><span>Descripción de la no conformidad <em>*</em></span><textarea name="description" required rows="5" placeholder="Qué ocurrió, cuándo ocurrió y qué necesita el cliente..."></textarea></label>
+                  <label class="field field-span-2"><span>Acción inmediata</span><textarea name="immediateAction" rows="3" placeholder="Qué se hizo para contener o atender el reclamo mientras se resuelve..."></textarea></label>
+                </div>
+              </div>
+              <aside class="form-side">
+                <div class="form-card compact-card">
+                  <div class="form-card-heading"><div class="step-badge">02</div><div><h2>Priorización</h2></div></div>
+                  <label class="field"><span>Prioridad</span><select name="priority"><option value="Media">Media</option><option value="Alta">Alta</option><option value="Baja">Baja</option><option value="Crítica">Crítica</option></select></label>
+                  <label class="field"><span>Fecha objetivo</span><input type="date" name="targetDate" /></label>
+                </div>
+                <div class="form-actions"><button class="button button-secondary" type="button" onclick="location.hash='dashboard'">Cancelar</button><button class="button button-primary" type="submit">Crear ticket <span>→</span></button></div>
+              </aside>
+            </form>
+          </section>
+
+          <section id="detailView" class="view hidden" data-view="detail">
+            <div id="detailContent"></div>
+          </section>
+        </main>
+      </div>
+    </div>
+    <div id="toast" class="toast" role="status" aria-live="polite"></div>
+    <script src="app.js"></script>
+  </body>
+</html>
