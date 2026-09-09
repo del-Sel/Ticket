@@ -161,6 +161,8 @@ let activeRole = localStorage.getItem(ROLE_KEY) || "calidad";
 let systemUnlocked = false;
 if (activeRole === "sistemas") { activeRole = "calidad"; localStorage.setItem(ROLE_KEY, activeRole); }
 let currentQuickFilter = "all";
+let sortKey = "number";
+let sortDirection = "asc";
 let selectedTicketId = null;
 
 const $ = (selector, root = document) => root.querySelector(selector);
@@ -289,19 +291,75 @@ function optionMarkup(options, selected, blankLabel = "") {
   return `${blank}${options.map(option => `<option value="${escapeHtml(option)}" ${option === selected ? "selected" : ""}>${escapeHtml(option)}</option>`).join("")}`;
 }
 
+function refreshFilterOptions() {
+  const fill = (id, allLabel, values) => {
+    const select = $(id);
+    if (!select) return;
+    const current = select.value || "all";
+    const uniqueValues = [...new Set(values.filter(Boolean).map(value => String(value)))].sort((a, b) => a.localeCompare(b, "es"));
+    select.innerHTML = `<option value="all">${escapeHtml(allLabel)}</option>${uniqueValues.map(value => `<option value="${escapeHtml(value)}">${escapeHtml(value)}</option>`).join("")}`;
+    select.value = uniqueValues.includes(current) ? current : "all";
+  };
+  fill("operatorFilter", "Operador: todos", tickets.map(ticket => ticket.operator || ticket.createdBy));
+  fill("requestedToFilter", "Solicitado a: todos", tickets.map(ticket => ticket.requestedTo));
+}
+
+function sortValue(ticket, key) {
+  if (key === "number") return recordNumber(ticket);
+  if (key === "createdAt" || key === "closedAt") return key === "closedAt" ? (ticket.closedAt || "") : (ticket.createdAt || "");
+  if (key === "customer") return ticket.customer || "";
+  if (key === "subject") return ticket.subject || "";
+  if (key === "operator") return ticket.operator || ticket.createdBy || "";
+  if (key === "requestedTo") return ticket.requestedTo || "";
+  if (key === "priority") return ({ Alta: 1, Media: 2, Baja: 3 }[ticket.priority] || 9);
+  if (key === "status") return ({ Pendiente: 1, "En proceso": 2, Finalizada: 3 }[operationalStatus(ticket)] || 9);
+  if (key === "verified") return ({ "": 1, No: 2, Si: 3 }[ticket.verified || ""] || 1);
+  return "";
+}
+
+function compareTickets(a, b) {
+  const left = sortValue(a, sortKey);
+  const right = sortValue(b, sortKey);
+  let comparison;
+  if (sortKey === "number" || sortKey === "priority" || sortKey === "status" || sortKey === "verified") comparison = left - right;
+  else if (sortKey === "createdAt" || sortKey === "closedAt") comparison = String(left).localeCompare(String(right));
+  else comparison = String(left).localeCompare(String(right), "es", { sensitivity: "base", numeric: true });
+  return (sortDirection === "desc" ? -1 : 1) * (comparison || recordNumber(a) - recordNumber(b));
+}
+
+function updateSortIndicators() {
+  const sortControl = $("#sortFilter");
+  if (sortControl) sortControl.value = `${sortKey}-${sortDirection}`;
+  $$('[data-sort-key]').forEach(button => {
+    const active = button.dataset.sortKey === sortKey;
+    const arrow = $(".sort-arrow", button);
+    if (arrow) arrow.textContent = active ? (sortDirection === "asc" ? "↑" : "↓") : "↕";
+    button.setAttribute("aria-label", `Ordenar por ${button.textContent.replace(/[↑↓↕]/g, "").trim()}`);
+  });
+}
+
 function renderDashboard() {
+  refreshFilterOptions();
   const query = $("#searchInput").value.trim().toLowerCase();
   const selectedStatus = $("#statusFilter").value;
+  const selectedPriority = $("#priorityFilter").value;
+  const selectedOperator = $("#operatorFilter").value;
+  const selectedRequestedTo = $("#requestedToFilter").value;
+  const selectedVerification = $("#verificationFilter").value;
   const totals = tickets.reduce((summary, ticket) => { summary[operationalStatus(ticket)] += 1; return summary; }, { Pendiente: 0, "En proceso": 0, Finalizada: 0 });
   $("#totalCount").textContent = tickets.length;
   $("#pendingCount").textContent = totals.Pendiente;
   $("#progressCount").textContent = totals["En proceso"];
   $("#finishedCount").textContent = totals.Finalizada;
   const visible = tickets.filter(ticket => {
-    const matchesQuery = !query || [ticket.id, ticket.customer, ticket.subject, ticket.operator, ticket.requestedTo].some(value => String(value || "").toLowerCase().includes(query));
+    const matchesQuery = !query || [recordLabel(ticket), ticket.id, ticket.customer, ticket.subject, ticket.operator, ticket.requestedTo].some(value => String(value || "").toLowerCase().includes(query));
     const matchesStatus = selectedStatus === "all" || operationalStatus(ticket) === selectedStatus;
-    return matchesQuery && matchesStatus;
-  }).sort((a, b) => recordNumber(a) - recordNumber(b));
+    const matchesPriority = selectedPriority === "all" || ticket.priority === selectedPriority;
+    const matchesOperator = selectedOperator === "all" || (ticket.operator || ticket.createdBy) === selectedOperator;
+    const matchesRequestedTo = selectedRequestedTo === "all" || ticket.requestedTo === selectedRequestedTo;
+    const matchesVerification = selectedVerification === "all" || (selectedVerification === "pending" ? !ticket.verified : ticket.verified === selectedVerification);
+    return matchesQuery && matchesStatus && matchesPriority && matchesOperator && matchesRequestedTo && matchesVerification;
+  }).sort(compareTickets);
   $("#resultCount").textContent = `${visible.length} ${visible.length === 1 ? "requerimiento" : "requerimientos"}`;
   $("#ticketTableBody").innerHTML = visible.map(ticket => `<tr data-open-ticket="${ticket.id}">
     <td><span class="ticket-id">${recordLabel(ticket)}</span></td>
@@ -317,6 +375,7 @@ function renderDashboard() {
   </tr>`).join("");
   $("#emptyState").classList.toggle("hidden", visible.length > 0);
   $$('[data-open-ticket]').forEach(row => row.addEventListener("click", () => openTicket(row.dataset.openTicket)));
+  updateSortIndicators();
 }
 
 function renderDetail(ticket) {
@@ -452,7 +511,26 @@ function openSystemsAccess() {
 $("#roleSelect").value = activeRole;
 $("#roleSelect").addEventListener("change", event => { const nextRole = event.target.value; if (nextRole === "sistemas" && !systemUnlocked) { event.target.value = activeRole; openSystemsAccess(); return; } activeRole = nextRole; if (activeRole !== "sistemas") systemUnlocked = false; localStorage.setItem(ROLE_KEY, activeRole); if (selectedTicketId && location.hash.startsWith("#ticket/")) renderDetail(ticketById(selectedTicketId)); showToast(activeRole === "sistemas" ? "Perfil Sistemas activo" : "Perfil Atención / Calidad activo"); });
 $("#searchInput").addEventListener("input", renderDashboard);
+$("#sortFilter").addEventListener("change", event => {
+  const match = event.target.value.match(/^(.*)-(asc|desc)$/);
+  if (!match) return;
+  sortKey = match[1];
+  sortDirection = match[2];
+  renderDashboard();
+});
 $("#statusFilter").addEventListener("change", () => { currentQuickFilter = "all"; renderDashboard(); });
+["#priorityFilter", "#operatorFilter", "#requestedToFilter", "#verificationFilter"].forEach(selector => $(selector).addEventListener("change", renderDashboard));
+$("#clearFilters").addEventListener("click", () => {
+  $("#searchInput").value = "";
+  ["#statusFilter", "#priorityFilter", "#operatorFilter", "#requestedToFilter", "#verificationFilter"].forEach(selector => { $(selector).value = "all"; });
+  renderDashboard();
+});
+$$('[data-sort-key]').forEach(button => button.addEventListener("click", () => {
+  const nextKey = button.dataset.sortKey;
+  if (sortKey === nextKey) sortDirection = sortDirection === "asc" ? "desc" : "asc";
+  else { sortKey = nextKey; sortDirection = "asc"; }
+  renderDashboard();
+}));
 $$("[data-quick-filter]").forEach(button => button.addEventListener("click", () => { currentQuickFilter = button.dataset.quickFilter; $("#statusFilter").value = "all"; renderDashboard(); }));
 $("#newTicketForm").addEventListener("submit", event => {
   event.preventDefault();
