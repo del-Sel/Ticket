@@ -182,6 +182,7 @@ function normalizeTicket(ticket) {
   const historyTitles = {
     "Ticket creado": "Requerimiento registrado",
     "Respuesta de Sistemas": "Corrección registrada",
+    "Caso tomado por Sistemas": "Revisión iniciada por Sistemas",
     "Verificación y cierre": "Verificación de Soporte",
     "Acción verificada": "Verificación de Soporte",
     "Acción correctiva cerrada": "Requerimiento finalizado"
@@ -323,7 +324,7 @@ function renderDetail(ticket) {
   </div>
   <div class="detail-grid">
     <div class="detail-main">
-      <article class="info-card"><div class="info-card-heading"><h2>Fase 1 · Registro de la no conformidad</h2><span class="muted">Origen del caso</span></div><div class="read-grid">
+      <article class="info-card"><div class="info-card-heading"><h2>Datos del requerimiento</h2></div><div class="read-grid">
         ${readField("Razón social", ticket.customer)}${readField("Operador", ticket.operator || ticket.createdBy)}${readField("Solicitado a", ticket.requestedTo)}${readField("Descripción", ticket.description || ticket.subject, true)}${ticket.contact ? readField("Contacto", ticket.contact) : ""}
       </div></article>
       <article class="info-card response-card"><div class="info-card-heading"><h2><span class="systems-icon">↗</span> Corrección de Sistemas</h2></div>
@@ -358,7 +359,7 @@ function openTicket(id) { selectedTicketId = id; location.hash = `ticket/${id}`;
 
 function addHistory(ticket, title, text, complete = true) {
   ticket.history = ticket.history || [];
-  ticket.history = ticket.history.filter(item => !["Derivación a Sistemas", "Derivado a Sistemas", "Caso tomado por Sistemas", "Respuesta de Sistemas", "Verificación y cierre", "Corrección registrada", "Verificación de Soporte"].includes(item.title) || item.complete);
+  ticket.history = ticket.history.filter(item => !["Derivación a Sistemas", "Derivado a Sistemas", "Caso tomado por Sistemas", "Revisión iniciada por Sistemas", "Respuesta de Sistemas", "Verificación y cierre", "Corrección registrada", "Verificación de Soporte"].includes(item.title) || item.complete);
   ticket.history.push({ title, text, date: nowIso(), complete });
 }
 
@@ -368,7 +369,7 @@ function handleDetailAction(action, id) {
   if (action === "copy") { navigator.clipboard?.writeText(ticket.id); showToast(`${ticket.id} copiado`); return; }
   if (action === "edit") { openEditModal(ticket); return; }
   if (action === "assign") { ticket.status = STATUS.ASSIGNED; ticket.assignee = ticket.requestedTo || "Sistemas"; ticket.updatedAt = nowIso(); addHistory(ticket, "Derivado a Sistemas", `El requerimiento fue enviado a ${ticket.requestedTo || "Sistemas"}.`); saveTickets(ticket); renderDetail(ticket); showToast("Requerimiento derivado a Sistemas"); return; }
-  if (action === "take") { ticket.status = STATUS.ANALYSIS; ticket.assignee = ticket.requestedTo || ticket.assignee || "Sistemas"; ticket.updatedAt = nowIso(); addHistory(ticket, "Caso tomado por Sistemas", "Sistemas comenzó el análisis técnico."); saveTickets(ticket); renderDetail(ticket); showToast("El caso quedó en análisis"); return; }
+  if (action === "take") { ticket.status = STATUS.ANALYSIS; ticket.assignee = ticket.requestedTo || ticket.assignee || "Sistemas"; ticket.updatedAt = nowIso(); addHistory(ticket, "Revisión iniciada por Sistemas", "Sistemas comenzó el análisis técnico."); saveTickets(ticket); renderDetail(ticket); showToast("El requerimiento quedó en análisis"); return; }
   if (action === "resolve") { openResolutionModal(ticket); return; }
   if (action === "verify") { openVerificationModal(ticket); return; }
 }
