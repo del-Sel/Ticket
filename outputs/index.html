@@ -48,7 +48,7 @@
               <div class="toolbar-controls">
                 <label class="search-box">
                   <span aria-hidden="true">⌕</span>
-                  <input id="searchInput" type="search" placeholder="Buscar por número, cliente o asunto" />
+                  <input id="searchInput" type="search" placeholder="Buscar por número, cliente o requerimiento" />
                 </label>
                 <select id="sortFilter" class="select-control" aria-label="Ordenar requerimientos">
                   <option value="number-asc">Orden: N° menor a mayor</option>
@@ -132,11 +132,11 @@
                 </div>
                 <div class="form-grid two-col">
                   <label class="field"><span>Fecha <em>*</em></span><input type="date" name="requestDate" required /></label>
-                  <label class="field"><span>Cliente <em>*</em></span><input name="customer" required placeholder="Nombre o razón social" /></label>
-                  <label class="field field-span-2"><span>Requerimiento <em>*</em></span><input name="subject" required placeholder="Descripción breve del requerimiento" /></label>
+                  <label class="field"><span>Cliente <em>*</em></span><input name="customer" required placeholder="Razón social del cliente" /></label>
+                  <label class="field field-span-2"><span>Requerimiento <em>*</em></span><input name="subject" required placeholder="Describí brevemente el requerimiento" /></label>
                   <label class="field"><span>Operador <em>*</em></span><select name="operator" required><option value="Cristian Sievert">Cristian Sievert</option><option value="Santiago del Sel">Santiago del Sel</option><option value="Ramiro Urgorri">Ramiro Urgorri</option></select></label>
                   <label class="field"><span>Solicitado a <em>*</em></span><select name="requestedTo" required><option value="Marcos Barlotti">Marcos Barlotti</option></select></label>
-                  <label class="field field-span-2"><span>Detalle</span><textarea name="description" rows="4" placeholder="Información adicional del requerimiento"></textarea></label>
+                  <label class="field field-span-2"><span>Detalle</span><textarea name="description" rows="4" placeholder="Antecedentes o información adicional del caso"></textarea></label>
                 </div>
               </div>
               <aside class="form-side">
@@ -156,6 +156,6 @@
       </div>
     </div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
-    <script src="app.js?v=20260909-3"></script>
+    <script src="app.js?v=20260909-4"></script>
   </body>
 </html>
