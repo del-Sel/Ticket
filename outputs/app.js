@@ -1,6 +1,10 @@
 const STORAGE_KEY = "fulmar-reclamos-v1";
 const ROLE_KEY = "fulmar-role-v1";
 const API_PATH = "/api/tickets";
+const OPERATORS = ["Cristian Sievert", "Santiago del Sel", "Ramiro Urgorri"];
+const REQUESTED_TO = ["Marcos Barlotti"];
+const EXCEL_STATUS = ["Pendiente", "En proceso", "Finalizada"];
+const VERIFICATION_OPTIONS = ["Si", "No"];
 
 const STATUS = {
   NEW: "Nuevo",
@@ -17,7 +21,10 @@ const statusClass = {
   [STATUS.ANALYSIS]: "status-analysis",
   [STATUS.RESOLVED]: "status-resolved",
   [STATUS.VERIFICATION]: "status-verification",
-  [STATUS.CLOSED]: "status-closed"
+  [STATUS.CLOSED]: "status-closed",
+  Pendiente: "status-new",
+  "En proceso": "status-analysis",
+  Finalizada: "status-closed"
 };
 
 const seedTickets = [
@@ -159,10 +166,23 @@ const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
 function loadTickets() {
   try {
     const saved = localStorage.getItem(STORAGE_KEY);
-    return saved ? JSON.parse(saved) : structuredClone(seedTickets);
+    return (saved ? JSON.parse(saved) : structuredClone(seedTickets)).map(normalizeTicket);
   } catch (error) {
-    return structuredClone(seedTickets);
+    return structuredClone(seedTickets).map(normalizeTicket);
   }
+}
+
+function normalizeTicket(ticket) {
+  const operator = ticket.operator || ticket.createdBy || "";
+  const requestedTo = ticket.requestedTo || (ticket.assignee && !["Sin asignar", "Sistemas"].includes(ticket.assignee) ? ticket.assignee : REQUESTED_TO[0]);
+  return {
+    ...ticket,
+    operator,
+    createdBy: operator || ticket.createdBy || "",
+    requestedTo,
+    verified: ticket.verified || (ticket.verification?.result === "Acción efectiva" ? "Si" : ticket.verification?.result === "Acción no efectiva" ? "No" : ""),
+    closedAt: ticket.closedAt || (ticket.status === STATUS.CLOSED ? ticket.updatedAt : "")
+  };
 }
 
 function saveTickets(ticket = null, method = "PUT") {
@@ -182,7 +202,7 @@ async function loadRemoteTickets() {
     if (!response.ok) return;
     const remoteTickets = await response.json();
     if (!Array.isArray(remoteTickets)) return;
-    tickets = remoteTickets;
+    tickets = remoteTickets.map(normalizeTicket);
     apiAvailable = true;
     localStorage.setItem(STORAGE_KEY, JSON.stringify(tickets));
     if (location.hash.startsWith("#ticket/") && !ticketById(selectedTicketId)) {
@@ -235,13 +255,23 @@ function relativeDate(value) {
 }
 function statusBadge(status) { return `<span class="status-badge ${statusClass[status] || "status-closed"}">${status}</span>`; }
 function ticketById(id) { return tickets.find(ticket => ticket.id === id); }
+function operationalStatus(ticket) {
+  if (ticket.status === STATUS.CLOSED) return "Finalizada";
+  if (ticket.status === STATUS.NEW) return "Pendiente";
+  return "En proceso";
+}
+function dateInputValue(value) { return value ? String(value).slice(0, 10) : ""; }
+function optionMarkup(options, selected, blankLabel = "") {
+  const blank = blankLabel ? `<option value="">${escapeHtml(blankLabel)}</option>` : "";
+  return `${blank}${options.map(option => `<option value="${escapeHtml(option)}" ${option === selected ? "selected" : ""}>${escapeHtml(option)}</option>`).join("")}`;
+}
 
 function renderDashboard() {
   const query = $("#searchInput").value.trim().toLowerCase();
   const selectedStatus = $("#statusFilter").value;
   const visible = tickets.filter(ticket => {
-    const matchesQuery = !query || [ticket.id, ticket.customer, ticket.subject, ticket.sourceSector].some(value => String(value || "").toLowerCase().includes(query));
-    const matchesStatus = selectedStatus === "all" || ticket.status === selectedStatus;
+    const matchesQuery = !query || [ticket.id, ticket.customer, ticket.subject, ticket.operator, ticket.requestedTo].some(value => String(value || "").toLowerCase().includes(query));
+    const matchesStatus = selectedStatus === "all" || operationalStatus(ticket) === selectedStatus;
     return matchesQuery && matchesStatus;
   }).sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
   $("#resultCount").textContent = `${visible.length} ${visible.length === 1 ? "ticket" : "tickets"}`;
@@ -250,12 +280,12 @@ function renderDashboard() {
     <td><span class="updated">${formatDate(ticket.createdAt)}</span></td>
     <td><span class="ticket-customer strong-cell">${escapeHtml(ticket.customer)}</span></td>
     <td><div class="ticket-subject">${escapeHtml(ticket.subject)}</div></td>
-    <td><span>${escapeHtml(ticket.createdBy || "—")}</span></td>
-    <td><span>${escapeHtml(ticket.assignee || "—")}</span></td>
-    <td><span class="priority ${ticket.priority}">${ticket.priority}</span></td>
-    <td>${statusBadge(ticket.status)}</td>
+    <td><span>${escapeHtml(ticket.operator || ticket.createdBy || "—")}</span></td>
+    <td><span>${escapeHtml(ticket.requestedTo || "—")}</span></td>
+    <td><span class="priority ${ticket.priority}">${escapeHtml(ticket.priority || "—")}</span></td>
+    <td>${statusBadge(operationalStatus(ticket))}</td>
     <td><span class="updated">${ticket.status === STATUS.CLOSED ? formatDate(ticket.closedAt || ticket.updatedAt) : "—"}</span></td>
-    <td><span class="verified ${ticket.verification?.result === "Acción efectiva" ? "yes" : ticket.verification?.result === "Acción no efectiva" ? "no" : ""}">${ticket.verification?.result === "Acción efectiva" ? "Sí" : ticket.verification?.result === "Acción no efectiva" ? "No" : "—"}</span></td>
+    <td><span class="verified ${ticket.verified === "Si" ? "yes" : ticket.verified === "No" ? "no" : ""}">${escapeHtml(ticket.verified || "—")}</span></td>
   </tr>`).join("");
   $("#emptyState").classList.toggle("hidden", visible.length > 0);
   $$('[data-open-ticket]').forEach(row => row.addEventListener("click", () => openTicket(row.dataset.openTicket)));
@@ -273,13 +303,13 @@ function renderDetail(ticket) {
     : canClose ? `<button class="button button-primary" data-action="close">Cerrar acción correctiva <span>✓</span></button>`
     : canVerify ? `<button class="button button-primary" data-action="verify">Verificar acción <span>→</span></button>` : "";
   $("#detailContent").innerHTML = `<div class="detail-top">
-    <div><a class="back-link" href="#dashboard">← Volver al panel</a><div class="detail-title-row"><h1>${escapeHtml(ticket.subject)}</h1>${statusBadge(ticket.status)}</div><div class="detail-meta"><span><strong>${ticket.id}</strong></span><span>Creado ${formatDate(ticket.createdAt)}</span><span>Por <strong>${escapeHtml(ticket.createdBy)}</strong></span></div></div>
-    <div class="detail-actions">${primaryAction}<button class="button button-secondary" data-action="copy">Copiar número</button></div>
+    <div><a class="back-link" href="#dashboard">← Volver al panel</a><div class="detail-title-row"><h1>${escapeHtml(ticket.subject)}</h1>${statusBadge(operationalStatus(ticket))}</div><div class="detail-meta"><span><strong>${ticket.id}</strong></span><span>Fecha ${formatDate(ticket.createdAt)}</span><span>Operador <strong>${escapeHtml(ticket.operator || ticket.createdBy)}</strong></span></div></div>
+    <div class="detail-actions">${primaryAction}<button class="button button-secondary" data-action="edit">Editar datos</button><button class="button button-secondary" data-action="copy">Copiar número</button></div>
   </div>
   <div class="detail-grid">
     <div class="detail-main">
       <article class="info-card"><div class="info-card-heading"><h2>Fase 1 · Registro de la no conformidad</h2><span class="muted">Origen del caso</span></div><div class="read-grid">
-        ${readField("Cliente", ticket.customer)}${readField("Contacto", ticket.contact || "No informado")}${readField("Tipología", ticket.typology)}${readField("Sector emisor", ticket.sourceSector)}${readField("Descripción", ticket.description, true)}${readField("Acción inmediata", ticket.immediateAction || "No registrada", true)}
+        ${readField("Razón social", ticket.customer)}${readField("Operador", ticket.operator || ticket.createdBy)}${readField("Solicitado a", ticket.requestedTo)}${readField("Descripción", ticket.description || ticket.subject, true)}${ticket.contact ? readField("Contacto", ticket.contact) : ""}
       </div></article>
       <article class="info-card response-card"><div class="info-card-heading"><h2><span class="systems-icon">↗</span> Fases 2 y 3 · Acción de Sistemas</h2>${ticket.correctiveNumber ? `<span class="muted">N° AC ${ticket.correctiveNumber}</span>` : ""}</div>
         ${ticket.correctiveAction ? `<div class="field-readonly">${readField("Acción correctiva definida", ticket.correctiveAction, true)}</div>` : `<div class="next-step"><strong>Próximo paso de Sistemas</strong>Tomar el caso, documentar el análisis y definir la acción correctiva.</div>`}
@@ -290,7 +320,7 @@ function renderDetail(ticket) {
       <article class="info-card timeline-card"><h2>Historial del ticket</h2><div class="timeline">${ticket.history.map(item => `<div class="timeline-item ${item.complete ? "complete" : ""}"><span class="timeline-dot"></span><div class="timeline-copy"><strong>${escapeHtml(item.title)}</strong><p>${escapeHtml(item.text)}</p><time>${item.date ? formatDate(item.date, true) : "Pendiente"}</time></div></div>`).join("")}</div></article>
     </div>
     <aside class="side-stack">
-      <article class="info-card side-card"><h2>Resumen operativo</h2><div class="assignee"><span class="mini-avatar system">${initials(ticket.assignee || "Sin asignar")}</span><div><strong>${escapeHtml(ticket.assignee || "Sin asignar")}</strong><span>Responsable actual</span></div></div><div class="sidebar-divider"></div><div class="side-details"><div class="side-detail"><span>Prioridad</span><strong class="priority ${ticket.priority}">${ticket.priority}</strong></div><div class="side-detail"><span>Fecha objetivo</span><strong>${formatDate(ticket.targetDate)}</strong></div><div class="side-detail"><span>Última actualización</span><strong>${formatDate(ticket.updatedAt, true)}</strong></div><div class="side-detail"><span>N° acción correctiva</span><strong>${ticket.correctiveNumber || "Pendiente"}</strong></div></div></article>
+      <article class="info-card side-card"><h2>Resumen operativo</h2><div class="assignee"><span class="mini-avatar system">${initials(ticket.requestedTo || ticket.assignee || "Sin asignar")}</span><div><strong>${escapeHtml(ticket.requestedTo || ticket.assignee || "Sin asignar")}</strong><span>Solicitado a</span></div></div><div class="sidebar-divider"></div><div class="side-details"><div class="side-detail"><span>Prioridad</span><strong class="priority ${ticket.priority}">${escapeHtml(ticket.priority || "—")}</strong></div><div class="side-detail"><span>Estado</span><strong>${operationalStatus(ticket)}</strong></div><div class="side-detail"><span>Fecha de cierre</span><strong>${formatDate(ticket.closedAt)}</strong></div><div class="side-detail"><span>Verificado</span><strong>${escapeHtml(ticket.verified || "—")}</strong></div></div></article>
       ${ticket.verification ? `<article class="info-card side-card"><h2>Fase 4 · Verificación</h2><div class="side-details"><div class="side-detail"><span>Resultado</span><strong>${escapeHtml(ticket.verification.result)}</strong></div><div class="side-detail"><span>Verificado por</span><strong>${escapeHtml(ticket.verification.by)}</strong></div><div class="side-detail"><span>Fecha</span><strong>${formatDate(ticket.verification.date)}</strong></div></div><p class="internal-note">${escapeHtml(ticket.verification.observations || "Sin observaciones")}</p></article>` : ""}
       <article class="info-card side-card"><p class="eyebrow">RESPUESTA AL CLIENTE</p><div class="next-step"><strong>${ticket.status === STATUS.CLOSED ? "Caso cerrado" : activeRole === "sistemas" ? "Cuando resuelvas" : "Cuando Sistemas responda"}</strong>${ticket.status === STATUS.CLOSED ? "La acción correctiva fue verificada y cerrada." : activeRole === "sistemas" ? "registrá también el texto que Atención podrá comunicar al cliente." : "vas a poder revisar la resolución y enviar una respuesta formal al cliente."}</div><p class="internal-note">La respuesta queda dentro del ticket para mantener una trazabilidad completa.</p></article>
     </aside>
@@ -306,7 +336,7 @@ function showView(view) {
   $$('[data-view]').forEach(section => section.classList.toggle("hidden", section.dataset.view !== target));
   $$('[data-view-link]').forEach(link => link.classList.toggle("is-active", link.dataset.viewLink === target));
   if (target === "dashboard") renderDashboard();
-  if (target === "new") { const dateField = $("[name=targetDate]"); if (dateField && !dateField.value) dateField.value = todayInput(); }
+  if (target === "new") { const dateField = $("[name=requestDate]"); if (dateField && !dateField.value) dateField.value = todayInput(); }
   if (target === "detail" && selectedTicketId) { const ticket = ticketById(selectedTicketId); if (ticket) renderDetail(ticket); }
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
@@ -323,11 +353,61 @@ function handleDetailAction(action, id) {
   const ticket = ticketById(id);
   if (!ticket) return;
   if (action === "copy") { navigator.clipboard?.writeText(ticket.id); showToast(`${ticket.id} copiado`); return; }
-  if (action === "assign") { ticket.status = STATUS.ASSIGNED; ticket.assignee = "Sistemas"; ticket.updatedAt = nowIso(); addHistory(ticket, "Derivado a Sistemas", "El caso fue enviado al equipo responsable."); saveTickets(ticket); renderDetail(ticket); showToast("Ticket derivado a Sistemas"); return; }
-  if (action === "take") { ticket.status = STATUS.ANALYSIS; ticket.assignee = "Sistemas"; ticket.updatedAt = nowIso(); addHistory(ticket, "Caso tomado por Sistemas", "Sistemas comenzó el análisis técnico."); saveTickets(ticket); renderDetail(ticket); showToast("El caso quedó en análisis"); return; }
+  if (action === "edit") { openEditModal(ticket); return; }
+  if (action === "assign") { ticket.status = STATUS.ASSIGNED; ticket.assignee = ticket.requestedTo || "Sistemas"; ticket.updatedAt = nowIso(); addHistory(ticket, "Derivado a Sistemas", `El caso fue enviado a ${ticket.requestedTo || "Sistemas"}.`); saveTickets(ticket); renderDetail(ticket); showToast("Ticket derivado a Sistemas"); return; }
+  if (action === "take") { ticket.status = STATUS.ANALYSIS; ticket.assignee = ticket.requestedTo || ticket.assignee || "Sistemas"; ticket.updatedAt = nowIso(); addHistory(ticket, "Caso tomado por Sistemas", "Sistemas comenzó el análisis técnico."); saveTickets(ticket); renderDetail(ticket); showToast("El caso quedó en análisis"); return; }
   if (action === "resolve") { openResolutionModal(ticket); return; }
   if (action === "verify") { openVerificationModal(ticket); return; }
   if (action === "close") { ticket.status = STATUS.CLOSED; ticket.closedAt = nowIso(); ticket.updatedAt = ticket.closedAt; addHistory(ticket, "Acción correctiva cerrada", "La no conformidad quedó cerrada."); saveTickets(ticket); renderDetail(ticket); showToast("Acción correctiva cerrada"); return; }
+}
+
+function openEditModal(ticket) {
+  const currentStatus = operationalStatus(ticket);
+  const verified = ticket.verified || "";
+  const modal = createModal("Editar requerimiento", '<form id="editTicketForm" class="modal-form">' +
+    '<div class="form-grid two-col">' +
+      '<label class="field"><span>Fecha <em>*</em></span><input type="date" name="requestDate" required value="' + dateInputValue(ticket.createdAt) + '" /></label>' +
+      '<label class="field"><span>Razón social <em>*</em></span><input name="customer" required value="' + escapeHtml(ticket.customer || "") + '" /></label>' +
+      '<label class="field field-span-2"><span>Requerimiento <em>*</em></span><input name="subject" required value="' + escapeHtml(ticket.subject || "") + '" /></label>' +
+      '<label class="field"><span>Operador <em>*</em></span><select name="operator" required>' + optionMarkup(OPERATORS, ticket.operator || ticket.createdBy) + '</select></label>' +
+      '<label class="field"><span>Solicitado a <em>*</em></span><select name="requestedTo" required>' + optionMarkup(REQUESTED_TO, ticket.requestedTo) + '</select></label>' +
+      '<label class="field"><span>Prioridad</span><select name="priority">' + optionMarkup(["Alta", "Media", "Baja"], ticket.priority || "Media") + '</select></label>' +
+      '<label class="field"><span>Estado</span><select name="operationalStatus">' + optionMarkup(EXCEL_STATUS, currentStatus) + '</select></label>' +
+      '<label class="field"><span>Fecha de cierre</span><input type="date" name="closedDate" value="' + dateInputValue(ticket.closedAt) + '" /></label>' +
+      '<label class="field"><span>Verificado</span><select name="verified">' + optionMarkup(VERIFICATION_OPTIONS, verified, "Sin verificar") + '</select></label>' +
+      '<label class="field field-span-2"><span>Detalle</span><textarea name="description" rows="4">' + escapeHtml(ticket.description || "") + '</textarea></label>' +
+    '</div>' +
+    '<div class="form-footer"><button type="button" class="button button-secondary" data-close-modal>Cancelar</button><button type="submit" class="button button-primary">Guardar cambios</button></div>' +
+  '</form>');
+  $("#editTicketForm", modal).addEventListener("submit", event => {
+    event.preventDefault();
+    const form = new FormData(event.target);
+    const requestDate = form.get("requestDate");
+    const nextStatus = form.get("operationalStatus");
+    const nextVerified = form.get("verified") || "";
+    ticket.createdAt = String(requestDate) + "T12:00:00";
+    ticket.customer = form.get("customer");
+    ticket.subject = form.get("subject");
+    ticket.operator = form.get("operator");
+    ticket.createdBy = ticket.operator;
+    ticket.requestedTo = form.get("requestedTo");
+    ticket.assignee = ticket.assignee === "Sin asignar" ? ticket.requestedTo : ticket.assignee;
+    ticket.priority = form.get("priority");
+    ticket.description = form.get("description") || ticket.subject;
+    ticket.verified = nextVerified;
+    if (nextVerified === "Si") ticket.verification = { ...(ticket.verification || {}), result: "Acción efectiva", date: ticket.verification?.date || nowIso(), by: ticket.verification?.by || ticket.operator };
+    else if (nextVerified === "No") ticket.verification = { ...(ticket.verification || {}), result: "Acción no efectiva", date: ticket.verification?.date || nowIso(), by: ticket.verification?.by || ticket.operator };
+    else ticket.verification = null;
+    if (nextStatus === "Pendiente") { ticket.status = STATUS.NEW; ticket.closedAt = ""; }
+    if (nextStatus === "En proceso") { ticket.status = [STATUS.NEW, STATUS.CLOSED].includes(ticket.status) ? STATUS.ASSIGNED : ticket.status; ticket.closedAt = ""; }
+    if (nextStatus === "Finalizada") { ticket.status = STATUS.CLOSED; ticket.closedAt = form.get("closedDate") ? String(form.get("closedDate")) + "T12:00:00" : ticket.closedAt || nowIso(); }
+    ticket.updatedAt = nowIso();
+    addHistory(ticket, "Datos actualizados", "Se actualizaron los datos del requerimiento.");
+    saveTickets(ticket);
+    closeModal();
+    renderDetail(ticket);
+    showToast("Cambios guardados");
+  });
 }
 
 function openResolutionModal(ticket) {
@@ -337,7 +417,7 @@ function openResolutionModal(ticket) {
 
 function openVerificationModal(ticket) {
   const modal = createModal("Verificar acción implementada", `<form id="verificationForm" class="modal-form"><p class="field-help">Esta instancia corresponde a la verificación de efectividad por Atención / Calidad.</p><label class="field"><span>Resultado de la verificación <em>*</em></span><select name="result" required><option value="Acción efectiva">Acción efectiva</option><option value="Acción no efectiva">Acción no efectiva</option></select></label><label class="field"><span>Observaciones</span><textarea name="observations" placeholder="Qué se comprobó y qué evidencia queda..."></textarea></label><div class="form-footer"><button type="button" class="button button-secondary" data-close-modal>Cancelar</button><button type="submit" class="button button-primary">Guardar verificación</button></div></form>`);
-  $("#verificationForm", modal).addEventListener("submit", event => { event.preventDefault(); const form = new FormData(event.target); const result = form.get("result"); ticket.verification = { result, observations: form.get("observations"), date: nowIso(), by: "Natalia" }; ticket.status = result === "Acción efectiva" ? STATUS.VERIFICATION : STATUS.ANALYSIS; ticket.updatedAt = nowIso(); addHistory(ticket, result === "Acción efectiva" ? "Acción verificada" : "Verificación: requiere ajustes", result === "Acción efectiva" ? `Acción efectiva. Verificación realizada por Natalia.` : "La acción no fue efectiva; Sistemas debe revisar el caso."); saveTickets(ticket); closeModal(); renderDetail(ticket); showToast(result === "Acción efectiva" ? "Acción verificada. Ya puede cerrarse" : "El ticket volvió a Sistemas para ajustes"); });
+  $("#verificationForm", modal).addEventListener("submit", event => { event.preventDefault(); const form = new FormData(event.target); const result = form.get("result"); ticket.verification = { result, observations: form.get("observations"), date: nowIso(), by: ticket.operator || "Calidad" }; ticket.verified = result === "Acción efectiva" ? "Si" : "No"; ticket.status = result === "Acción efectiva" ? STATUS.VERIFICATION : STATUS.ANALYSIS; ticket.updatedAt = nowIso(); addHistory(ticket, result === "Acción efectiva" ? "Acción verificada" : "Verificación: requiere ajustes", result === "Acción efectiva" ? `Acción efectiva. Verificación realizada por ${ticket.operator || "Calidad"}.` : "La acción no fue efectiva; Sistemas debe revisar el caso."); saveTickets(ticket); closeModal(); renderDetail(ticket); showToast(result === "Acción efectiva" ? "Acción verificada. Ya puede cerrarse" : "El ticket volvió a Sistemas para ajustes"); });
 }
 
 function createModal(title, content) {
@@ -353,7 +433,21 @@ $("#roleSelect").addEventListener("change", event => { activeRole = event.target
 $("#searchInput").addEventListener("input", renderDashboard);
 $("#statusFilter").addEventListener("change", () => { currentQuickFilter = "all"; renderDashboard(); });
 $$("[data-quick-filter]").forEach(button => button.addEventListener("click", () => { currentQuickFilter = button.dataset.quickFilter; $("#statusFilter").value = "all"; renderDashboard(); }));
-$("#newTicketForm").addEventListener("submit", event => { event.preventDefault(); const form = new FormData(event.target); const number = nextTicketNumber(); const created = nowIso(); const ticket = { id: `RC-${String(number).padStart(4, "0")}`, number, customer: form.get("customer"), contact: form.get("contact"), subject: form.get("subject"), typology: form.get("typology"), sourceSector: form.get("sourceSector"), createdBy: "Natalia", priority: form.get("priority"), targetDate: form.get("targetDate"), description: form.get("description"), immediateAction: form.get("immediateAction"), status: STATUS.NEW, assignee: "Sin asignar", createdAt: created, updatedAt: created, correctiveNumber: null, correctiveAction: "", resolution: "", actionTaken: "", systemsResponsible: "", verification: null, history: [{ title: "Ticket creado", text: "Registrado por Natalia desde el sector emisor.", date: created, complete: true }, { title: "Derivado a Sistemas", text: "Pendiente de enviar el caso al equipo responsable.", date: null, complete: false }, { title: "Respuesta de Sistemas", text: "Pendiente de registrar la resolución.", date: null, complete: false }, { title: "Verificación y cierre", text: "Calidad verificará la efectividad de la acción.", date: null, complete: false }] }; tickets.push(ticket); saveTickets(ticket, "POST"); event.target.reset(); showToast(`${ticket.id} creado correctamente`); openTicket(ticket.id); });
+$("#newTicketForm").addEventListener("submit", event => {
+  event.preventDefault();
+  const form = new FormData(event.target);
+  const number = nextTicketNumber();
+  const operator = form.get("operator");
+  const requestedTo = form.get("requestedTo");
+  const requestDate = form.get("requestDate") || todayInput();
+  const created = String(requestDate) + "T12:00:00";
+  const ticket = { id: "RC-" + String(number).padStart(4, "0"), number, customer: form.get("customer"), contact: "", subject: form.get("subject"), typology: "Reclamo de cliente", sourceSector: "Atención al Cliente", operator, createdBy: operator, requestedTo, priority: form.get("priority"), targetDate: "", description: form.get("description") || form.get("subject"), immediateAction: "", status: STATUS.NEW, assignee: "Sin asignar", createdAt: created, updatedAt: created, correctiveNumber: null, correctiveAction: "", resolution: "", actionTaken: "", systemsResponsible: "", verification: null, verified: "", closedAt: "", history: [{ title: "Ticket creado", text: "Registrado por " + operator + ".", date: created, complete: true }, { title: "Derivado a Sistemas", text: "Pendiente de enviar el caso a " + requestedTo + ".", date: null, complete: false }, { title: "Respuesta de Sistemas", text: "Pendiente de registrar la resolución.", date: null, complete: false }, { title: "Verificación y cierre", text: "Pendiente de verificación.", date: null, complete: false }] };
+  tickets.push(ticket);
+  saveTickets(ticket, "POST");
+  event.target.reset();
+  showToast(ticket.id + " creado correctamente");
+  openTicket(ticket.id);
+});
 
 function routeFromHash() { const hash = location.hash.replace(/^#/, "") || "dashboard"; if (hash.startsWith("ticket/")) { selectedTicketId = hash.split("/")[1]; if (ticketById(selectedTicketId)) { renderDashboard(); showView("detail"); } else { location.hash = "dashboard"; showView("dashboard"); } } else if (hash === "new") showView("new"); else showView("dashboard"); }
 window.addEventListener("hashchange", routeFromHash);
