@@ -50,28 +50,60 @@
                   <span aria-hidden="true">⌕</span>
                   <input id="searchInput" type="search" placeholder="Buscar por número, cliente o asunto" />
                 </label>
-                <select id="statusFilter" class="select-control" aria-label="Filtrar por estado">
-                  <option value="all">Todos los estados</option>
-                  <option value="Pendiente">Pendiente</option>
-                  <option value="En proceso">En proceso</option>
-                  <option value="Finalizada">Finalizada</option>
+                <select id="sortFilter" class="select-control" aria-label="Ordenar requerimientos">
+                  <option value="number-asc">Orden: N° menor a mayor</option>
+                  <option value="number-desc">Orden: N° mayor a menor</option>
+                  <option value="createdAt-desc">Orden: fecha más reciente</option>
+                  <option value="createdAt-asc">Orden: fecha más antigua</option>
+                  <option value="customer-asc">Orden: razón social A-Z</option>
+                  <option value="priority-asc">Orden: prioridad</option>
+                  <option value="status-asc">Orden: estado</option>
+                  <option value="operator-asc">Orden: operador A-Z</option>
                 </select>
+              </div>
+              <div class="table-filters" aria-label="Filtros de requerimientos">
+                <span class="filter-label">Filtrar</span>
+                <select id="statusFilter" class="select-control" aria-label="Filtrar por estado">
+                  <option value="all">Estado: todos</option>
+                  <option value="Pendiente">Estado: Pendiente</option>
+                  <option value="En proceso">Estado: En proceso</option>
+                  <option value="Finalizada">Estado: Finalizada</option>
+                </select>
+                <select id="priorityFilter" class="select-control" aria-label="Filtrar por prioridad">
+                  <option value="all">Prioridad: todas</option>
+                  <option value="Alta">Prioridad: Alta</option>
+                  <option value="Media">Prioridad: Media</option>
+                  <option value="Baja">Prioridad: Baja</option>
+                </select>
+                <select id="operatorFilter" class="select-control" aria-label="Filtrar por operador">
+                  <option value="all">Operador: todos</option>
+                </select>
+                <select id="requestedToFilter" class="select-control" aria-label="Filtrar por solicitado a">
+                  <option value="all">Solicitado a: todos</option>
+                </select>
+                <select id="verificationFilter" class="select-control" aria-label="Filtrar por verificación">
+                  <option value="all">Verificado: todos</option>
+                  <option value="Si">Verificado: Sí</option>
+                  <option value="No">Verificado: No</option>
+                  <option value="pending">Verificado: pendiente</option>
+                </select>
+                <button id="clearFilters" class="button button-secondary filter-clear" type="button">Limpiar filtros</button>
               </div>
             </div>
             <div class="ticket-table-wrap">
               <table class="ticket-table">
                 <thead>
                   <tr>
-                    <th>N°</th>
-                    <th>Fecha</th>
-                    <th>Razón social</th>
-                    <th>Requerimiento</th>
-                    <th>Operador</th>
-                    <th>Solicitado a</th>
-                    <th>Prioridad</th>
-                    <th>Estado</th>
-                    <th>Fecha de cierre</th>
-                    <th>Verificado</th>
+                    <th><button class="table-sort" type="button" data-sort-key="number">N° <span class="sort-arrow" aria-hidden="true">↑</span></button></th>
+                    <th><button class="table-sort" type="button" data-sort-key="createdAt">Fecha <span class="sort-arrow" aria-hidden="true">↕</span></button></th>
+                    <th><button class="table-sort" type="button" data-sort-key="customer">Razón social <span class="sort-arrow" aria-hidden="true">↕</span></button></th>
+                    <th><button class="table-sort" type="button" data-sort-key="subject">Requerimiento <span class="sort-arrow" aria-hidden="true">↕</span></button></th>
+                    <th><button class="table-sort" type="button" data-sort-key="operator">Operador <span class="sort-arrow" aria-hidden="true">↕</span></button></th>
+                    <th><button class="table-sort" type="button" data-sort-key="requestedTo">Solicitado a <span class="sort-arrow" aria-hidden="true">↕</span></button></th>
+                    <th><button class="table-sort" type="button" data-sort-key="priority">Prioridad <span class="sort-arrow" aria-hidden="true">↕</span></button></th>
+                    <th><button class="table-sort" type="button" data-sort-key="status">Estado <span class="sort-arrow" aria-hidden="true">↕</span></button></th>
+                    <th><button class="table-sort" type="button" data-sort-key="closedAt">Fecha de cierre <span class="sort-arrow" aria-hidden="true">↕</span></button></th>
+                    <th><button class="table-sort" type="button" data-sort-key="verified">Verificado <span class="sort-arrow" aria-hidden="true">↕</span></button></th>
                   </tr>
                 </thead>
                 <tbody id="ticketTableBody"></tbody>
@@ -124,6 +156,6 @@
       </div>
     </div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
-    <script src="app.js?v=20260909-2"></script>
+    <script src="app.js?v=20260909-3"></script>
   </body>
 </html>
