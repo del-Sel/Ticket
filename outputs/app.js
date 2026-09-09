@@ -2,7 +2,6 @@ const STORAGE_KEY = "fulmar-reclamos-v1";
 const ROLE_KEY = "fulmar-role-v1";
 const API_PATH = "/api/tickets";
 const SYSTEM_PASSWORD = "35426";
-const SYSTEM_ACCESS_KEY = "fulmar-sistemas-access-v1";
 const OPERATORS = ["Cristian Sievert", "Santiago del Sel", "Ramiro Urgorri"];
 const REQUESTED_TO = ["Marcos Barlotti"];
 const EXCEL_STATUS = ["Pendiente", "En proceso", "Finalizada"];
@@ -56,7 +55,7 @@ const seedTickets = [
     history: [
       { title: "Requerimiento registrado", text: "Registrado por Natalia desde Gestión de Calidad.", date: "2026-09-03T09:10:00", complete: true },
       { title: "Derivado a Sistemas", text: "El caso fue enviado al equipo responsable.", date: "2026-09-03T09:18:00", complete: true },
-      { title: "Caso tomado por Sistemas", text: "Sistemas comenzó el análisis técnico.", date: "2026-09-03T11:35:00", complete: true },
+      { title: "Proceso iniciado", text: "Requerimiento en proceso.", date: "2026-09-03T11:35:00", complete: true },
       { title: "Corrección registrada", text: "Pendiente de registrar la corrección realizada y la observación.", date: null, complete: false },
       { title: "Verificación de Soporte", text: "Soporte verificará la corrección realizada.", date: null, complete: false }
     ]
@@ -87,7 +86,7 @@ const seedTickets = [
     history: [
       { title: "Requerimiento registrado", text: "Registrado por Mariana desde Atención al Cliente.", date: "2026-09-02T14:20:00", complete: true },
       { title: "Derivado a Sistemas", text: "El caso fue enviado al equipo responsable.", date: "2026-09-02T14:31:00", complete: true },
-      { title: "Caso tomado por Sistemas", text: "Sistemas comenzó el análisis técnico.", date: "2026-09-03T08:30:00", complete: true },
+      { title: "Proceso iniciado", text: "Requerimiento en proceso.", date: "2026-09-03T08:30:00", complete: true },
       { title: "Corrección registrada", text: "Corrección realizada. Pendiente de verificación por Soporte.", date: "2026-09-03T10:05:00", complete: true },
       { title: "Verificación de Soporte", text: "Soporte debe verificar la corrección realizada.", date: null, complete: false }
     ]
@@ -118,7 +117,7 @@ const seedTickets = [
     history: [
       { title: "Requerimiento registrado", text: "Registrado por Pablo desde Comercial.", date: "2026-09-03T08:05:00", complete: true },
       { title: "Derivado a Sistemas", text: "El caso fue enviado al equipo responsable.", date: "2026-09-03T08:20:00", complete: true },
-      { title: "Caso tomado por Sistemas", text: "Pendiente de que Sistemas tome el caso.", date: null, complete: false },
+      { title: "Proceso iniciado", text: "Pendiente de inicio.", date: null, complete: false },
       { title: "Corrección registrada", text: "Pendiente de registrar la corrección realizada y la observación.", date: null, complete: false },
       { title: "Verificación de Soporte", text: "Soporte verificará la corrección realizada.", date: null, complete: false }
     ]
@@ -159,8 +158,8 @@ const seedTickets = [
 let tickets = loadTickets();
 let apiAvailable = false;
 let activeRole = localStorage.getItem(ROLE_KEY) || "calidad";
-let systemUnlocked = sessionStorage.getItem(SYSTEM_ACCESS_KEY) === "1";
-if (activeRole === "sistemas" && !systemUnlocked) activeRole = "calidad";
+let systemUnlocked = false;
+if (activeRole === "sistemas") { activeRole = "calidad"; localStorage.setItem(ROLE_KEY, activeRole); }
 let currentQuickFilter = "all";
 let selectedTicketId = null;
 
@@ -184,7 +183,8 @@ function normalizeTicket(ticket) {
     "Derivación a Sistemas": "Enviado a Sistemas",
     "Derivado a Sistemas": "Enviado a Sistemas",
     "Respuesta de Sistemas": "Corrección registrada",
-    "Caso tomado por Sistemas": "Revisión iniciada por Sistemas",
+    "Caso tomado por Sistemas": "Proceso iniciado",
+    "Revisión iniciada por Sistemas": "Proceso iniciado",
     "Verificación y cierre": "Verificación de Soporte",
     "Acción verificada": "Verificación de Soporte",
     "Acción correctiva cerrada": "Requerimiento finalizado"
@@ -196,7 +196,8 @@ function normalizeTicket(ticket) {
     requestedTo,
     history: (ticket.history || []).map(item => {
       const sentAutomatically = ["Derivación a Sistemas", "Derivado a Sistemas", "Enviado a Sistemas"].includes(item.title) && !item.complete && ticket.status === STATUS.NEW;
-      return { ...item, title: "Enviado a Sistemas" === historyTitles[item.title] || sentAutomatically ? "Enviado a Sistemas" : historyTitles[item.title] || item.title, text: sentAutomatically ? `El requerimiento fue enviado a ${requestedTo}.` : item.text, date: sentAutomatically ? item.date || ticket.createdAt : item.date, complete: sentAutomatically ? true : item.complete };
+      const processStarted = ["Caso tomado por Sistemas", "Revisión iniciada por Sistemas", "Proceso iniciado"].includes(item.title);
+      return { ...item, title: "Enviado a Sistemas" === historyTitles[item.title] || sentAutomatically ? "Enviado a Sistemas" : historyTitles[item.title] || item.title, text: sentAutomatically ? `El requerimiento fue enviado a ${requestedTo}.` : processStarted ? (item.complete ? "Requerimiento en proceso." : "Pendiente de inicio.") : item.text, date: sentAutomatically ? item.date || ticket.createdAt : item.date, complete: sentAutomatically ? true : item.complete };
     }),
     verified: ticket.verified || (["Acción efectiva", "Si"].includes(ticket.verification?.result) ? "Si" : ["Acción no efectiva", "No"].includes(ticket.verification?.result) ? "No" : ""),
     closedAt: ticket.closedAt || (ticket.status === STATUS.CLOSED ? ticket.updatedAt : "")
@@ -273,8 +274,10 @@ function relativeDate(value) {
 }
 function statusBadge(status) { return `<span class="status-badge ${statusClass[status] || "status-closed"}">${status}</span>`; }
 function ticketById(id) { return tickets.find(ticket => ticket.id === id); }
+function recordNumber(ticket) { return ticket.number || Number(String(ticket.id || "").replace(/\D/g, "")) || 0; }
+function recordLabel(ticket) { return "RS-" + String(recordNumber(ticket)).padStart(4, "0"); }
 function operationalStatus(ticket) {
-  if (ticket.status === STATUS.CLOSED) return "Finalizada";
+  if ([STATUS.RESOLVED, STATUS.CLOSED].includes(ticket.status)) return "Finalizada";
   if ([STATUS.NEW, STATUS.ASSIGNED].includes(ticket.status)) return "Pendiente";
   return "En proceso";
 }
@@ -296,10 +299,10 @@ function renderDashboard() {
     const matchesQuery = !query || [ticket.id, ticket.customer, ticket.subject, ticket.operator, ticket.requestedTo].some(value => String(value || "").toLowerCase().includes(query));
     const matchesStatus = selectedStatus === "all" || operationalStatus(ticket) === selectedStatus;
     return matchesQuery && matchesStatus;
-  }).sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+  }).sort((a, b) => recordNumber(a) - recordNumber(b));
   $("#resultCount").textContent = `${visible.length} ${visible.length === 1 ? "requerimiento" : "requerimientos"}`;
   $("#ticketTableBody").innerHTML = visible.map(ticket => `<tr data-open-ticket="${ticket.id}">
-    <td><span class="ticket-id">${ticket.id}</span></td>
+    <td><span class="ticket-id">${recordLabel(ticket)}</span></td>
     <td><span class="updated">${formatDate(ticket.createdAt)}</span></td>
     <td><span class="ticket-customer strong-cell">${escapeHtml(ticket.customer)}</span></td>
     <td><div class="ticket-subject">${escapeHtml(ticket.subject)}</div></td>
@@ -318,11 +321,11 @@ function renderDetail(ticket) {
   const canTake = activeRole === "sistemas" && [STATUS.NEW, STATUS.ASSIGNED].includes(ticket.status);
   const canResolve = activeRole === "sistemas" && ticket.status === STATUS.ANALYSIS;
   const canVerify = activeRole === "calidad" && [STATUS.RESOLVED, STATUS.VERIFICATION].includes(ticket.status);
-  const primaryAction = canTake ? `<button class="button button-primary" data-action="take">Tomar requerimiento <span>→</span></button>`
-    : canResolve ? `<button class="button button-primary" data-action="resolve">Registrar corrección <span>→</span></button>`
+  const primaryAction = canTake ? `<button class="button button-primary" data-action="take">Comenzar proceso <span>→</span></button>`
+    : canResolve ? `<button class="button button-primary" data-action="resolve">Finalizar requerimiento <span>→</span></button>`
     : canVerify ? `<button class="button button-primary" data-action="verify">Verificar requerimiento <span>→</span></button>` : "";
   $("#detailContent").innerHTML = `<div class="detail-top">
-    <div><a class="back-link" href="#dashboard">← Volver al panel</a><div class="detail-title-row"><h1>${escapeHtml(ticket.subject)}</h1>${statusBadge(operationalStatus(ticket))}</div><div class="detail-meta"><span><strong>${ticket.id}</strong></span><span>Fecha ${formatDate(ticket.createdAt)}</span><span>Operador <strong>${escapeHtml(ticket.operator || ticket.createdBy)}</strong></span></div></div>
+    <div><a class="back-link" href="#dashboard">← Volver al panel</a><div class="detail-title-row"><h1>${escapeHtml(ticket.subject)}</h1>${statusBadge(operationalStatus(ticket))}</div><div class="detail-meta"><span><strong>${recordLabel(ticket)}</strong></span><span>Fecha ${formatDate(ticket.createdAt)}</span><span>Operador <strong>${escapeHtml(ticket.operator || ticket.createdBy)}</strong></span></div></div>
     <div class="detail-actions">${primaryAction}</div>
   </div>
   <div class="detail-grid">
@@ -358,7 +361,7 @@ function openTicket(id) { selectedTicketId = id; location.hash = `ticket/${id}`;
 
 function addHistory(ticket, title, text, complete = true) {
   ticket.history = ticket.history || [];
-  ticket.history = ticket.history.filter(item => !["Derivación a Sistemas", "Derivado a Sistemas", "Enviado a Sistemas", "Caso tomado por Sistemas", "Revisión iniciada por Sistemas", "Respuesta de Sistemas", "Verificación y cierre", "Corrección registrada", "Verificación de Soporte"].includes(item.title) || item.complete);
+  ticket.history = ticket.history.filter(item => !["Derivación a Sistemas", "Derivado a Sistemas", "Enviado a Sistemas", "Caso tomado por Sistemas", "Revisión iniciada por Sistemas", "Proceso iniciado", "Respuesta de Sistemas", "Verificación y cierre", "Corrección registrada", "Verificación de Soporte"].includes(item.title) || item.complete);
   ticket.history.push({ title, text, date: nowIso(), complete });
 }
 
@@ -367,7 +370,7 @@ function handleDetailAction(action, id) {
   if (!ticket) return;
   if (action === "copy") { navigator.clipboard?.writeText(ticket.id); showToast(`${ticket.id} copiado`); return; }
   if (action === "edit") { openEditModal(ticket); return; }
-  if (action === "take") { ticket.status = STATUS.ANALYSIS; ticket.assignee = ticket.requestedTo || ticket.assignee || "Sistemas"; ticket.updatedAt = nowIso(); addHistory(ticket, "Revisión iniciada por Sistemas", "Sistemas comenzó el análisis técnico."); saveTickets(ticket); renderDetail(ticket); showToast("El requerimiento quedó en análisis"); return; }
+  if (action === "take") { ticket.status = STATUS.ANALYSIS; ticket.assignee = ticket.requestedTo || ticket.assignee || "Sistemas"; ticket.updatedAt = nowIso(); addHistory(ticket, "Proceso iniciado", "Requerimiento en proceso."); saveTickets(ticket); renderDetail(ticket); showToast("Proceso iniciado"); return; }
   if (action === "resolve") { openResolutionModal(ticket); return; }
   if (action === "verify") { openVerificationModal(ticket); return; }
 }
@@ -422,8 +425,8 @@ function openEditModal(ticket) {
 }
 
 function openResolutionModal(ticket) {
-  const modal = createModal("Registrar corrección de Sistemas", `<form id="resolutionForm" class="modal-form"><label class="field"><span>Corrección realizada <em>*</em></span><textarea name="correction" required placeholder="Qué se corrigió para resolver el requerimiento..."></textarea></label><label class="field"><span>Observación</span><textarea name="observation" placeholder="Dato relevante sobre la corrección realizada..."></textarea></label><div class="form-footer"><button type="button" class="button button-secondary" data-close-modal>Cancelar</button><button type="submit" class="button button-primary">Guardar corrección</button></div></form>`);
-  $("#resolutionForm", modal).addEventListener("submit", event => { event.preventDefault(); const form = new FormData(event.target); ticket.correction = form.get("correction"); ticket.observation = form.get("observation"); ticket.correctiveAction = ticket.correction; ticket.actionTaken = ticket.observation; ticket.resolution = ticket.correction; ticket.status = STATUS.RESOLVED; ticket.verified = ""; ticket.verification = null; ticket.closedAt = ""; ticket.updatedAt = nowIso(); addHistory(ticket, "Corrección registrada", "Sistemas registró la corrección realizada."); saveTickets(ticket); closeModal(); renderDetail(ticket); showToast("Corrección registrada. Soporte puede verificarla"); });
+  const modal = createModal("Finalizar requerimiento", `<form id="resolutionForm" class="modal-form"><label class="field"><span>Corrección realizada <em>*</em></span><textarea name="correction" required placeholder="Indicar la corrección realizada..."></textarea></label><label class="field"><span>Observación</span><textarea name="observation" placeholder="Agregar una observación..."></textarea></label><div class="form-footer"><button type="button" class="button button-secondary" data-close-modal>Cancelar</button><button type="submit" class="button button-primary">Finalizar requerimiento</button></div></form>`);
+  $("#resolutionForm", modal).addEventListener("submit", event => { event.preventDefault(); const form = new FormData(event.target); ticket.correction = form.get("correction"); ticket.observation = form.get("observation"); ticket.correctiveAction = ticket.correction; ticket.actionTaken = ticket.observation; ticket.resolution = ticket.correction; ticket.status = STATUS.RESOLVED; ticket.verified = ""; ticket.verification = null; ticket.closedAt = ""; ticket.updatedAt = nowIso(); addHistory(ticket, "Requerimiento finalizado", "Corrección y observación registradas."); saveTickets(ticket); closeModal(); renderDetail(ticket); showToast("Requerimiento finalizado. Soporte debe verificarlo"); });
 }
 
 function openVerificationModal(ticket) {
@@ -436,16 +439,16 @@ function createModal(title, content) {
 }
 function closeModal() { $(".modal-backdrop")?.remove(); }
 function showToast(message) { const toast = $("#toast"); toast.textContent = message; toast.classList.add("show"); clearTimeout(showToast.timer); showToast.timer = setTimeout(() => toast.classList.remove("show"), 3000); }
-function nextTicketNumber() { return Math.max(0, ...tickets.map(ticket => ticket.number || Number(ticket.id.replace(/\D/g, "")) || 0)) + 1; }
+function nextTicketNumber() { return Math.max(0, ...tickets.map(recordNumber)) + 1; }
 function nextCorrectiveNumber() { return Math.max(0, ...tickets.map(ticket => ticket.correctiveNumber || 0)) + 1; }
 
 function openSystemsAccess() {
   const modal = createModal("Acceso a Sistemas", '<form id="systemsAccessForm" class="modal-form"><label class="field"><span>Contraseña <em>*</em></span><input type="password" name="password" required autocomplete="current-password" /></label><div class="form-footer"><button type="button" class="button button-secondary" data-close-modal>Cancelar</button><button type="submit" class="button button-primary">Ingresar</button></div></form>');
-  $("#systemsAccessForm", modal).addEventListener("submit", event => { event.preventDefault(); const form = new FormData(event.target); if (form.get("password") !== SYSTEM_PASSWORD) { showToast("Contraseña incorrecta"); return; } systemUnlocked = true; sessionStorage.setItem(SYSTEM_ACCESS_KEY, "1"); activeRole = "sistemas"; localStorage.setItem(ROLE_KEY, activeRole); $("#roleSelect").value = activeRole; closeModal(); if (selectedTicketId && location.hash.startsWith("#ticket/")) renderDetail(ticketById(selectedTicketId)); showToast("Perfil Sistemas activo"); });
+  $("#systemsAccessForm", modal).addEventListener("submit", event => { event.preventDefault(); const form = new FormData(event.target); if (form.get("password") !== SYSTEM_PASSWORD) { showToast("Contraseña incorrecta"); return; } systemUnlocked = true; activeRole = "sistemas"; localStorage.setItem(ROLE_KEY, activeRole); $("#roleSelect").value = activeRole; closeModal(); if (selectedTicketId && location.hash.startsWith("#ticket/")) renderDetail(ticketById(selectedTicketId)); showToast("Perfil Sistemas activo"); });
 }
 
 $("#roleSelect").value = activeRole;
-$("#roleSelect").addEventListener("change", event => { const nextRole = event.target.value; if (nextRole === "sistemas" && !systemUnlocked) { event.target.value = activeRole; openSystemsAccess(); return; } activeRole = nextRole; localStorage.setItem(ROLE_KEY, activeRole); if (selectedTicketId && location.hash.startsWith("#ticket/")) renderDetail(ticketById(selectedTicketId)); showToast(activeRole === "sistemas" ? "Perfil Sistemas activo" : "Perfil Atención / Calidad activo"); });
+$("#roleSelect").addEventListener("change", event => { const nextRole = event.target.value; if (nextRole === "sistemas" && !systemUnlocked) { event.target.value = activeRole; openSystemsAccess(); return; } activeRole = nextRole; if (activeRole !== "sistemas") systemUnlocked = false; localStorage.setItem(ROLE_KEY, activeRole); if (selectedTicketId && location.hash.startsWith("#ticket/")) renderDetail(ticketById(selectedTicketId)); showToast(activeRole === "sistemas" ? "Perfil Sistemas activo" : "Perfil Atención / Calidad activo"); });
 $("#searchInput").addEventListener("input", renderDashboard);
 $("#statusFilter").addEventListener("change", () => { currentQuickFilter = "all"; renderDashboard(); });
 $$("[data-quick-filter]").forEach(button => button.addEventListener("click", () => { currentQuickFilter = button.dataset.quickFilter; $("#statusFilter").value = "all"; renderDashboard(); }));
@@ -457,11 +460,11 @@ $("#newTicketForm").addEventListener("submit", event => {
   const requestedTo = form.get("requestedTo");
   const requestDate = form.get("requestDate") || todayInput();
   const created = String(requestDate) + "T12:00:00";
-  const ticket = { id: "RC-" + String(number).padStart(4, "0"), number, customer: form.get("customer"), contact: "", subject: form.get("subject"), typology: "Reclamo de cliente", sourceSector: "Atención al Cliente", operator, createdBy: operator, requestedTo, priority: form.get("priority"), targetDate: "", description: form.get("description") || form.get("subject"), immediateAction: "", status: STATUS.ASSIGNED, assignee: requestedTo, createdAt: created, updatedAt: created, correctiveNumber: null, correctiveAction: "", correction: "", observation: "", resolution: "", actionTaken: "", systemsResponsible: "", verification: null, verified: "", closedAt: "", history: [{ title: "Requerimiento registrado", text: "Registrado por " + operator + ".", date: created, complete: true }, { title: "Enviado a Sistemas", text: "El requerimiento fue enviado a " + requestedTo + ".", date: created, complete: true }, { title: "Revisión iniciada por Sistemas", text: "Pendiente de que Sistemas tome el requerimiento.", date: null, complete: false }, { title: "Corrección registrada", text: "Pendiente de registrar la corrección.", date: null, complete: false }, { title: "Verificación de Soporte", text: "Pendiente de verificación.", date: null, complete: false }] };
+  const ticket = { id: "RS-" + String(number).padStart(4, "0"), number, customer: form.get("customer"), contact: "", subject: form.get("subject"), typology: "Reclamo de cliente", sourceSector: "Atención al Cliente", operator, createdBy: operator, requestedTo, priority: form.get("priority"), targetDate: "", description: form.get("description") || form.get("subject"), immediateAction: "", status: STATUS.ASSIGNED, assignee: requestedTo, createdAt: created, updatedAt: created, correctiveNumber: null, correctiveAction: "", correction: "", observation: "", resolution: "", actionTaken: "", systemsResponsible: "", verification: null, verified: "", closedAt: "", history: [{ title: "Requerimiento registrado", text: "Registrado por " + operator + ".", date: created, complete: true }, { title: "Enviado a Sistemas", text: "El requerimiento fue enviado a " + requestedTo + ".", date: created, complete: true }, { title: "Proceso iniciado", text: "Pendiente de inicio.", date: null, complete: false }, { title: "Corrección registrada", text: "Pendiente de registrar la corrección.", date: null, complete: false }, { title: "Verificación de Soporte", text: "Pendiente de verificación.", date: null, complete: false }] };
   tickets.push(ticket);
   saveTickets(ticket, "POST");
   event.target.reset();
-  showToast("Requerimiento " + ticket.id + " creado correctamente");
+  showToast(recordLabel(ticket) + " creado correctamente");
   openTicket(ticket.id);
 });
 
