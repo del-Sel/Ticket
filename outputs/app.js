@@ -192,7 +192,10 @@ function normalizeTicket(ticket) {
     operator,
     createdBy: operator || ticket.createdBy || "",
     requestedTo,
-    history: (ticket.history || []).map(item => ({ ...item, title: historyTitles[item.title] || item.title })),
+    history: (ticket.history || []).map(item => {
+      const sentAutomatically = item.title === "Derivado a Sistemas" && !item.complete && ticket.status === STATUS.NEW;
+      return { ...item, title: sentAutomatically ? "Enviado a Sistemas" : historyTitles[item.title] || item.title, complete: sentAutomatically ? true : item.complete };
+    }),
     verified: ticket.verified || (["Acción efectiva", "Si"].includes(ticket.verification?.result) ? "Si" : ["Acción no efectiva", "No"].includes(ticket.verification?.result) ? "No" : ""),
     closedAt: ticket.closedAt || (ticket.status === STATUS.CLOSED ? ticket.updatedAt : "")
   };
@@ -270,7 +273,7 @@ function statusBadge(status) { return `<span class="status-badge ${statusClass[s
 function ticketById(id) { return tickets.find(ticket => ticket.id === id); }
 function operationalStatus(ticket) {
   if (ticket.status === STATUS.CLOSED) return "Finalizada";
-  if (ticket.status === STATUS.NEW) return "Pendiente";
+  if ([STATUS.NEW, STATUS.ASSIGNED].includes(ticket.status)) return "Pendiente";
   return "En proceso";
 }
 function dateInputValue(value) { return value ? String(value).slice(0, 10) : ""; }
@@ -310,33 +313,27 @@ function renderDashboard() {
 }
 
 function renderDetail(ticket) {
-  const canAssign = activeRole === "calidad" && ticket.status === STATUS.NEW;
-  const canTake = activeRole === "sistemas" && ticket.status === STATUS.ASSIGNED;
+  const canTake = activeRole === "sistemas" && [STATUS.NEW, STATUS.ASSIGNED].includes(ticket.status);
   const canResolve = activeRole === "sistemas" && ticket.status === STATUS.ANALYSIS;
   const canVerify = activeRole === "calidad" && [STATUS.RESOLVED, STATUS.VERIFICATION].includes(ticket.status);
-  const primaryAction = canAssign ? `<button class="button button-primary" data-action="assign">Derivar a Sistemas <span>→</span></button>`
-    : canTake ? `<button class="button button-primary" data-action="take">Tomar caso <span>→</span></button>`
+  const primaryAction = canTake ? `<button class="button button-primary" data-action="take">Tomar requerimiento <span>→</span></button>`
     : canResolve ? `<button class="button button-primary" data-action="resolve">Registrar corrección <span>→</span></button>`
     : canVerify ? `<button class="button button-primary" data-action="verify">Verificar requerimiento <span>→</span></button>` : "";
   $("#detailContent").innerHTML = `<div class="detail-top">
     <div><a class="back-link" href="#dashboard">← Volver al panel</a><div class="detail-title-row"><h1>${escapeHtml(ticket.subject)}</h1>${statusBadge(operationalStatus(ticket))}</div><div class="detail-meta"><span><strong>${ticket.id}</strong></span><span>Fecha ${formatDate(ticket.createdAt)}</span><span>Operador <strong>${escapeHtml(ticket.operator || ticket.createdBy)}</strong></span></div></div>
-    <div class="detail-actions">${primaryAction}<button class="button button-secondary" data-action="edit">Editar datos</button><button class="button button-secondary" data-action="copy">Copiar número</button></div>
+    <div class="detail-actions">${primaryAction}</div>
   </div>
   <div class="detail-grid">
     <div class="detail-main">
       <article class="info-card"><div class="info-card-heading"><h2>Datos del requerimiento</h2></div><div class="read-grid">
         ${readField("Razón social", ticket.customer)}${readField("Operador", ticket.operator || ticket.createdBy)}${readField("Solicitado a", ticket.requestedTo)}${readField("Descripción", ticket.description || ticket.subject, true)}${ticket.contact ? readField("Contacto", ticket.contact) : ""}
       </div></article>
-      <article class="info-card response-card"><div class="info-card-heading"><h2><span class="systems-icon">↗</span> Corrección de Sistemas</h2></div>
-        ${ticket.correction || ticket.correctiveAction || ticket.resolution ? `<div class="field-readonly">${readField("Corrección realizada", ticket.correction || ticket.correctiveAction || ticket.resolution, true)}</div>` : `<div class="next-step"><strong>Próximo paso de Sistemas</strong>Registrar la corrección realizada y una observación.</div>`}
-        ${ticket.observation || ticket.actionTaken ? `<div class="field-readonly">${readField("Observación", ticket.observation || ticket.actionTaken, true)}</div>` : ""}
-      </article>
+      ${(ticket.correction || ticket.correctiveAction || ticket.resolution || ticket.observation || ticket.actionTaken) ? `<article class="info-card response-card"><div class="info-card-heading"><h2><span class="systems-icon">↗</span> Corrección de Sistemas</h2></div>${ticket.correction || ticket.correctiveAction || ticket.resolution ? `<div class="field-readonly">${readField("Corrección realizada", ticket.correction || ticket.correctiveAction || ticket.resolution, true)}</div>` : ""}${ticket.observation || ticket.actionTaken ? `<div class="field-readonly">${readField("Observación", ticket.observation || ticket.actionTaken, true)}</div>` : ""}</article>` : ""}
       <article class="info-card timeline-card"><h2>Historial del requerimiento</h2><div class="timeline">${ticket.history.map(item => `<div class="timeline-item ${item.complete ? "complete" : ""}"><span class="timeline-dot"></span><div class="timeline-copy"><strong>${escapeHtml(item.title)}</strong><p>${escapeHtml(item.text)}</p><time>${item.date ? formatDate(item.date, true) : "Pendiente"}</time></div></div>`).join("")}</div></article>
     </div>
     <aside class="side-stack">
       <article class="info-card side-card"><h2>Resumen operativo</h2><div class="assignee"><span class="mini-avatar system">${initials(ticket.requestedTo || ticket.assignee || "Sin asignar")}</span><div><strong>${escapeHtml(ticket.requestedTo || ticket.assignee || "Sin asignar")}</strong><span>Solicitado a</span></div></div><div class="sidebar-divider"></div><div class="side-details"><div class="side-detail"><span>Prioridad</span><strong class="priority ${ticket.priority}">${escapeHtml(ticket.priority || "—")}</strong></div><div class="side-detail"><span>Estado</span><strong>${operationalStatus(ticket)}</strong></div><div class="side-detail"><span>Fecha de cierre</span><strong>${formatDate(ticket.closedAt)}</strong></div><div class="side-detail"><span>Verificado</span><strong>${escapeHtml(ticket.verified || "—")}</strong></div></div></article>
       ${ticket.verification ? `<article class="info-card side-card"><h2>Verificación de Soporte</h2><div class="side-details"><div class="side-detail"><span>Verificado</span><strong>${escapeHtml(ticket.verified || "—")}</strong></div><div class="side-detail"><span>Verificado por</span><strong>${escapeHtml(ticket.verification.by)}</strong></div><div class="side-detail"><span>Fecha</span><strong>${formatDate(ticket.verification.date)}</strong></div></div><p class="internal-note">${escapeHtml(ticket.verification.observations || "Sin observaciones")}</p></article>` : ""}
-      <article class="info-card side-card"><p class="eyebrow">SEGUIMIENTO</p><div class="next-step"><strong>${ticket.status === STATUS.CLOSED ? "Requerimiento finalizado" : activeRole === "sistemas" ? "Corrección pendiente" : "Esperando corrección de Sistemas"}</strong>${ticket.status === STATUS.CLOSED ? "Soporte verificó la corrección registrada." : activeRole === "sistemas" ? "Registrá la corrección y una observación." : "Soporte podrá verificar el resultado cuando Sistemas responda."}</div></article>
     </aside>
   </div>`;
   $$('[data-action]', $("#detailContent")).forEach(button => button.addEventListener("click", () => handleDetailAction(button.dataset.action, ticket.id)));
@@ -359,7 +356,7 @@ function openTicket(id) { selectedTicketId = id; location.hash = `ticket/${id}`;
 
 function addHistory(ticket, title, text, complete = true) {
   ticket.history = ticket.history || [];
-  ticket.history = ticket.history.filter(item => !["Derivación a Sistemas", "Derivado a Sistemas", "Caso tomado por Sistemas", "Revisión iniciada por Sistemas", "Respuesta de Sistemas", "Verificación y cierre", "Corrección registrada", "Verificación de Soporte"].includes(item.title) || item.complete);
+  ticket.history = ticket.history.filter(item => !["Derivación a Sistemas", "Derivado a Sistemas", "Enviado a Sistemas", "Caso tomado por Sistemas", "Revisión iniciada por Sistemas", "Respuesta de Sistemas", "Verificación y cierre", "Corrección registrada", "Verificación de Soporte"].includes(item.title) || item.complete);
   ticket.history.push({ title, text, date: nowIso(), complete });
 }
 
@@ -368,7 +365,6 @@ function handleDetailAction(action, id) {
   if (!ticket) return;
   if (action === "copy") { navigator.clipboard?.writeText(ticket.id); showToast(`${ticket.id} copiado`); return; }
   if (action === "edit") { openEditModal(ticket); return; }
-  if (action === "assign") { ticket.status = STATUS.ASSIGNED; ticket.assignee = ticket.requestedTo || "Sistemas"; ticket.updatedAt = nowIso(); addHistory(ticket, "Derivado a Sistemas", `El requerimiento fue enviado a ${ticket.requestedTo || "Sistemas"}.`); saveTickets(ticket); renderDetail(ticket); showToast("Requerimiento derivado a Sistemas"); return; }
   if (action === "take") { ticket.status = STATUS.ANALYSIS; ticket.assignee = ticket.requestedTo || ticket.assignee || "Sistemas"; ticket.updatedAt = nowIso(); addHistory(ticket, "Revisión iniciada por Sistemas", "Sistemas comenzó el análisis técnico."); saveTickets(ticket); renderDetail(ticket); showToast("El requerimiento quedó en análisis"); return; }
   if (action === "resolve") { openResolutionModal(ticket); return; }
   if (action === "verify") { openVerificationModal(ticket); return; }
@@ -459,7 +455,7 @@ $("#newTicketForm").addEventListener("submit", event => {
   const requestedTo = form.get("requestedTo");
   const requestDate = form.get("requestDate") || todayInput();
   const created = String(requestDate) + "T12:00:00";
-  const ticket = { id: "RC-" + String(number).padStart(4, "0"), number, customer: form.get("customer"), contact: "", subject: form.get("subject"), typology: "Reclamo de cliente", sourceSector: "Atención al Cliente", operator, createdBy: operator, requestedTo, priority: form.get("priority"), targetDate: "", description: form.get("description") || form.get("subject"), immediateAction: "", status: STATUS.NEW, assignee: "Sin asignar", createdAt: created, updatedAt: created, correctiveNumber: null, correctiveAction: "", correction: "", observation: "", resolution: "", actionTaken: "", systemsResponsible: "", verification: null, verified: "", closedAt: "", history: [{ title: "Requerimiento registrado", text: "Registrado por " + operator + ".", date: created, complete: true }, { title: "Derivado a Sistemas", text: "Pendiente de enviar el caso a " + requestedTo + ".", date: null, complete: false }, { title: "Corrección registrada", text: "Pendiente de registrar la corrección.", date: null, complete: false }, { title: "Verificación de Soporte", text: "Pendiente de verificación.", date: null, complete: false }] };
+  const ticket = { id: "RC-" + String(number).padStart(4, "0"), number, customer: form.get("customer"), contact: "", subject: form.get("subject"), typology: "Reclamo de cliente", sourceSector: "Atención al Cliente", operator, createdBy: operator, requestedTo, priority: form.get("priority"), targetDate: "", description: form.get("description") || form.get("subject"), immediateAction: "", status: STATUS.ASSIGNED, assignee: requestedTo, createdAt: created, updatedAt: created, correctiveNumber: null, correctiveAction: "", correction: "", observation: "", resolution: "", actionTaken: "", systemsResponsible: "", verification: null, verified: "", closedAt: "", history: [{ title: "Requerimiento registrado", text: "Registrado por " + operator + ".", date: created, complete: true }, { title: "Enviado a Sistemas", text: "El requerimiento fue enviado a " + requestedTo + ".", date: created, complete: true }, { title: "Revisión iniciada por Sistemas", text: "Pendiente de que Sistemas tome el requerimiento.", date: null, complete: false }, { title: "Corrección registrada", text: "Pendiente de registrar la corrección.", date: null, complete: false }, { title: "Verificación de Soporte", text: "Pendiente de verificación.", date: null, complete: false }] };
   tickets.push(ticket);
   saveTickets(ticket, "POST");
   event.target.reset();
