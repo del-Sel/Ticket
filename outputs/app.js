@@ -179,11 +179,19 @@ function loadTickets() {
 function normalizeTicket(ticket) {
   const operator = ticket.operator || ticket.createdBy || "";
   const requestedTo = ticket.requestedTo || (ticket.assignee && !["Sin asignar", "Sistemas"].includes(ticket.assignee) ? ticket.assignee : REQUESTED_TO[0]);
+  const historyTitles = {
+    "Ticket creado": "Requerimiento registrado",
+    "Respuesta de Sistemas": "Corrección registrada",
+    "Verificación y cierre": "Verificación de Soporte",
+    "Acción verificada": "Verificación de Soporte",
+    "Acción correctiva cerrada": "Requerimiento finalizado"
+  };
   return {
     ...ticket,
     operator,
     createdBy: operator || ticket.createdBy || "",
     requestedTo,
+    history: (ticket.history || []).map(item => ({ ...item, title: historyTitles[item.title] || item.title })),
     verified: ticket.verified || (["Acción efectiva", "Si"].includes(ticket.verification?.result) ? "Si" : ["Acción no efectiva", "No"].includes(ticket.verification?.result) ? "No" : ""),
     closedAt: ticket.closedAt || (ticket.status === STATUS.CLOSED ? ticket.updatedAt : "")
   };
