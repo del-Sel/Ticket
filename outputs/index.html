@@ -47,12 +47,9 @@
                 </label>
                 <select id="statusFilter" class="select-control" aria-label="Filtrar por estado">
                   <option value="all">Todos los estados</option>
-                  <option value="Nuevo">Nuevo</option>
-                  <option value="Derivado a Sistemas">Derivado a Sistemas</option>
-                  <option value="En análisis">En análisis</option>
-                  <option value="Resuelto por Sistemas">Resuelto por Sistemas</option>
-                  <option value="En verificación">En verificación</option>
-                  <option value="Cerrado">Cerrado</option>
+                  <option value="Pendiente">Pendiente</option>
+                  <option value="En proceso">En proceso</option>
+                  <option value="Finalizada">Finalizada</option>
                 </select>
               </div>
             </div>
@@ -97,20 +94,18 @@
                   <div><h2>Datos del reclamo</h2></div>
                 </div>
                 <div class="form-grid two-col">
+                  <label class="field"><span>Fecha <em>*</em></span><input type="date" name="requestDate" required /></label>
                   <label class="field"><span>Cliente <em>*</em></span><input name="customer" required placeholder="Nombre o razón social" /></label>
-                  <label class="field"><span>Contacto del cliente</span><input name="contact" placeholder="Email o teléfono" /></label>
-                  <label class="field field-span-2"><span>Asunto <em>*</em></span><input name="subject" required placeholder="Resumen breve del reclamo" /></label>
-                  <label class="field"><span>Tipología <em>*</em></span><select name="typology" required><option value="Reclamo de cliente">Reclamo de cliente</option><option value="Consulta">Consulta</option><option value="Auditoría">Auditoría</option><option value="No conformidad interna">No conformidad interna</option></select></label>
-                  <label class="field"><span>Sector emisor <em>*</em></span><select name="sourceSector" required><option value="Atención al Cliente">Atención al Cliente</option><option value="Gestión de Calidad">Gestión de Calidad</option><option value="Comercial">Comercial</option><option value="Administración">Administración</option><option value="Logística">Logística</option></select></label>
-                  <label class="field field-span-2"><span>Descripción de la no conformidad <em>*</em></span><textarea name="description" required rows="5" placeholder="Qué ocurrió, cuándo ocurrió y qué necesita el cliente..."></textarea></label>
-                  <label class="field field-span-2"><span>Acción inmediata</span><textarea name="immediateAction" rows="3" placeholder="Qué se hizo para contener o atender el reclamo mientras se resuelve..."></textarea></label>
+                  <label class="field field-span-2"><span>Requerimiento <em>*</em></span><input name="subject" required placeholder="Descripción breve del requerimiento" /></label>
+                  <label class="field"><span>Operador <em>*</em></span><select name="operator" required><option value="Cristian Sievert">Cristian Sievert</option><option value="Santiago del Sel">Santiago del Sel</option><option value="Ramiro Urgorri">Ramiro Urgorri</option></select></label>
+                  <label class="field"><span>Solicitado a <em>*</em></span><select name="requestedTo" required><option value="Marcos Barlotti">Marcos Barlotti</option></select></label>
+                  <label class="field field-span-2"><span>Detalle</span><textarea name="description" rows="4" placeholder="Información adicional del requerimiento"></textarea></label>
                 </div>
               </div>
               <aside class="form-side">
                 <div class="form-card compact-card">
                   <div class="form-card-heading"><div class="step-badge">02</div><div><h2>Priorización</h2></div></div>
-                  <label class="field"><span>Prioridad</span><select name="priority"><option value="Media">Media</option><option value="Alta">Alta</option><option value="Baja">Baja</option><option value="Crítica">Crítica</option></select></label>
-                  <label class="field"><span>Fecha objetivo</span><input type="date" name="targetDate" /></label>
+                  <label class="field"><span>Prioridad</span><select name="priority"><option value="Media">Media</option><option value="Alta">Alta</option><option value="Baja">Baja</option></select></label>
                 </div>
                 <div class="form-actions"><button class="button button-secondary" type="button" onclick="location.hash='dashboard'">Cancelar</button><button class="button button-primary" type="submit">Crear ticket <span>→</span></button></div>
               </aside>
