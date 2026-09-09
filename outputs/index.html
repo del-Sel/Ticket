@@ -4,7 +4,7 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#b51f2d" />
-    <title>Mesa de reclamos | Ful-Mar</title>
+    <title>Seguimiento de requerimientos a Sistemas | Ful-Mar</title>
     <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
@@ -12,7 +12,7 @@
       <header class="topbar">
         <a class="brand" href="#dashboard" aria-label="Ir al inicio">
           <img class="brand-logo" src="ful-mar-logo.png" alt="Ful-Mar" />
-          <span class="brand-title">Seguimiento de reclamos</span>
+          <span class="brand-title">Seguimiento de requerimientos a Sistemas</span>
         </a>
         <div class="topbar-actions">
           <label class="role-switcher">
@@ -31,14 +31,20 @@
           <section id="dashboardView" class="view" data-view="dashboard">
             <div class="page-heading">
               <div>
-                <h1>Reclamos</h1>
+                <h1>Seguimiento de requerimientos a Sistemas</h1>
               </div>
-              <a class="button button-primary" href="#new"><span>＋</span> Registrar reclamo</a>
+              <a class="button button-primary" href="#new"><span>＋</span> Registrar requerimiento</a>
+            </div>
+            <div class="summary-cards" aria-label="Resumen de requerimientos">
+              <div class="summary-card"><span>Total</span><strong id="totalCount">0</strong></div>
+              <div class="summary-card summary-pending"><span>Pendientes</span><strong id="pendingCount">0</strong></div>
+              <div class="summary-card summary-progress"><span>En proceso</span><strong id="progressCount">0</strong></div>
+              <div class="summary-card summary-finished"><span>Finalizadas</span><strong id="finishedCount">0</strong></div>
             </div>
             <div class="section-toolbar">
               <div>
                 <h2>Seguimiento de requerimientos a Sistemas</h2>
-                <span class="muted" id="resultCount">0 tickets</span>
+                <span class="muted" id="resultCount">0 requerimientos</span>
               </div>
               <div class="toolbar-controls">
                 <label class="search-box">
@@ -57,7 +63,7 @@
               <table class="ticket-table">
                 <thead>
                   <tr>
-                    <th>Ticket</th>
+                    <th>N°</th>
                     <th>Fecha</th>
                     <th>Razón social</th>
                     <th>Requerimiento</th>
@@ -73,9 +79,9 @@
               </table>
               <div id="emptyState" class="empty-state hidden">
                 <div class="empty-icon">⌕</div>
-                <h3>No hay tickets para mostrar</h3>
-                <p>Probá con otro filtro o registrá un nuevo reclamo.</p>
-                <a class="button button-secondary" href="#new">Registrar reclamo</a>
+                <h3>No hay requerimientos para mostrar</h3>
+                <p>Registrá un nuevo requerimiento para comenzar el seguimiento.</p>
+                <a class="button button-secondary" href="#new">Registrar requerimiento</a>
               </div>
             </div>
           </section>
@@ -84,14 +90,14 @@
             <div class="page-heading compact-heading">
               <div>
                 <a class="back-link" href="#dashboard">← Volver al panel</a>
-                <h1>Registrar reclamo</h1>
+                <h1>Registrar requerimiento</h1>
               </div>
             </div>
             <form id="newTicketForm" class="form-layout">
               <div class="form-card">
                 <div class="form-card-heading">
                   <div class="step-badge">01</div>
-                  <div><h2>Datos del reclamo</h2></div>
+                  <div><h2>Datos del requerimiento</h2></div>
                 </div>
                 <div class="form-grid two-col">
                   <label class="field"><span>Fecha <em>*</em></span><input type="date" name="requestDate" required /></label>
@@ -107,7 +113,7 @@
                   <div class="form-card-heading"><div class="step-badge">02</div><div><h2>Priorización</h2></div></div>
                   <label class="field"><span>Prioridad</span><select name="priority"><option value="Media">Media</option><option value="Alta">Alta</option><option value="Baja">Baja</option></select></label>
                 </div>
-                <div class="form-actions"><button class="button button-secondary" type="button" onclick="location.hash='dashboard'">Cancelar</button><button class="button button-primary" type="submit">Crear ticket <span>→</span></button></div>
+                <div class="form-actions"><button class="button button-secondary" type="button" onclick="location.hash='dashboard'">Cancelar</button><button class="button button-primary" type="submit">Registrar requerimiento <span>→</span></button></div>
               </aside>
             </form>
           </section>
