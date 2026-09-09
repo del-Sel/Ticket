@@ -1,6 +1,8 @@
 const STORAGE_KEY = "fulmar-reclamos-v1";
 const ROLE_KEY = "fulmar-role-v1";
 const API_PATH = "/api/tickets";
+const SYSTEM_PASSWORD = "35426";
+const SYSTEM_ACCESS_KEY = "fulmar-sistemas-access-v1";
 const OPERATORS = ["Cristian Sievert", "Santiago del Sel", "Ramiro Urgorri"];
 const REQUESTED_TO = ["Marcos Barlotti"];
 const EXCEL_STATUS = ["Pendiente", "En proceso", "Finalizada"];
@@ -52,11 +54,11 @@ const seedTickets = [
     systemsResponsible: "Equipo de Sistemas",
     verification: null,
     history: [
-      { title: "Ticket creado", text: "Registrado por Natalia desde Gestión de Calidad.", date: "2026-09-03T09:10:00", complete: true },
+      { title: "Requerimiento registrado", text: "Registrado por Natalia desde Gestión de Calidad.", date: "2026-09-03T09:10:00", complete: true },
       { title: "Derivado a Sistemas", text: "El caso fue enviado al equipo responsable.", date: "2026-09-03T09:18:00", complete: true },
       { title: "Caso tomado por Sistemas", text: "Sistemas comenzó el análisis técnico.", date: "2026-09-03T11:35:00", complete: true },
-      { title: "Respuesta de Sistemas", text: "Pendiente de registrar la resolución y respuesta formal.", date: null, complete: false },
-      { title: "Verificación y cierre", text: "Calidad verificará la efectividad de la acción.", date: null, complete: false }
+      { title: "Corrección registrada", text: "Pendiente de registrar la corrección realizada y la observación.", date: null, complete: false },
+      { title: "Verificación de Soporte", text: "Soporte verificará la corrección realizada.", date: null, complete: false }
     ]
   },
   {
@@ -83,11 +85,11 @@ const seedTickets = [
     systemsResponsible: "Luciano - Sistemas",
     verification: null,
     history: [
-      { title: "Ticket creado", text: "Registrado por Mariana desde Atención al Cliente.", date: "2026-09-02T14:20:00", complete: true },
+      { title: "Requerimiento registrado", text: "Registrado por Mariana desde Atención al Cliente.", date: "2026-09-02T14:20:00", complete: true },
       { title: "Derivado a Sistemas", text: "El caso fue enviado al equipo responsable.", date: "2026-09-02T14:31:00", complete: true },
       { title: "Caso tomado por Sistemas", text: "Sistemas comenzó el análisis técnico.", date: "2026-09-03T08:30:00", complete: true },
-      { title: "Respuesta de Sistemas", text: "Resolución registrada. Pendiente de verificación por Calidad.", date: "2026-09-03T10:05:00", complete: true },
-      { title: "Verificación y cierre", text: "Calidad debe confirmar que la acción fue efectiva.", date: null, complete: false }
+      { title: "Corrección registrada", text: "Corrección realizada. Pendiente de verificación por Soporte.", date: "2026-09-03T10:05:00", complete: true },
+      { title: "Verificación de Soporte", text: "Soporte debe verificar la corrección realizada.", date: null, complete: false }
     ]
   },
   {
@@ -114,11 +116,11 @@ const seedTickets = [
     systemsResponsible: "",
     verification: null,
     history: [
-      { title: "Ticket creado", text: "Registrado por Pablo desde Comercial.", date: "2026-09-03T08:05:00", complete: true },
+      { title: "Requerimiento registrado", text: "Registrado por Pablo desde Comercial.", date: "2026-09-03T08:05:00", complete: true },
       { title: "Derivado a Sistemas", text: "El caso fue enviado al equipo responsable.", date: "2026-09-03T08:20:00", complete: true },
       { title: "Caso tomado por Sistemas", text: "Pendiente de que Sistemas tome el caso.", date: null, complete: false },
-      { title: "Respuesta de Sistemas", text: "Pendiente de registrar la resolución.", date: null, complete: false },
-      { title: "Verificación y cierre", text: "Calidad verificará la efectividad de la acción.", date: null, complete: false }
+      { title: "Corrección registrada", text: "Pendiente de registrar la corrección realizada y la observación.", date: null, complete: false },
+      { title: "Verificación de Soporte", text: "Soporte verificará la corrección realizada.", date: null, complete: false }
     ]
   },
   {
@@ -145,11 +147,11 @@ const seedTickets = [
     systemsResponsible: "Luciano - Sistemas",
     verification: { result: "Acción efectiva", observations: "Se verificó el envío correcto de nuevas confirmaciones.", date: "2026-09-01T16:35:00", by: "Natalia" },
     history: [
-      { title: "Ticket creado", text: "Registrado por Mariana desde Atención al Cliente.", date: "2026-08-28T10:10:00", complete: true },
+      { title: "Requerimiento registrado", text: "Registrado por Mariana desde Atención al Cliente.", date: "2026-08-28T10:10:00", complete: true },
       { title: "Derivado a Sistemas", text: "El caso fue enviado al equipo responsable.", date: "2026-08-28T10:20:00", complete: true },
-      { title: "Respuesta de Sistemas", text: "Resolución registrada y comunicada a Atención.", date: "2026-08-31T15:10:00", complete: true },
-      { title: "Acción verificada", text: "Acción efectiva. Verificación realizada por Natalia.", date: "2026-09-01T16:35:00", complete: true },
-      { title: "Acción correctiva cerrada", text: "La no conformidad quedó cerrada.", date: "2026-09-01T16:40:00", complete: true }
+      { title: "Corrección registrada", text: "Corrección realizada y comunicada a Atención.", date: "2026-08-31T15:10:00", complete: true },
+      { title: "Verificación de Soporte", text: "Corrección verificada por Natalia.", date: "2026-09-01T16:35:00", complete: true },
+      { title: "Requerimiento finalizado", text: "Soporte confirmó la corrección realizada.", date: "2026-09-01T16:40:00", complete: true }
     ]
   }
 ];
@@ -157,6 +159,8 @@ const seedTickets = [
 let tickets = loadTickets();
 let apiAvailable = false;
 let activeRole = localStorage.getItem(ROLE_KEY) || "calidad";
+let systemUnlocked = sessionStorage.getItem(SYSTEM_ACCESS_KEY) === "1";
+if (activeRole === "sistemas" && !systemUnlocked) activeRole = "calidad";
 let currentQuickFilter = "all";
 let selectedTicketId = null;
 
@@ -180,7 +184,7 @@ function normalizeTicket(ticket) {
     operator,
     createdBy: operator || ticket.createdBy || "",
     requestedTo,
-    verified: ticket.verified || (ticket.verification?.result === "Acción efectiva" ? "Si" : ticket.verification?.result === "Acción no efectiva" ? "No" : ""),
+    verified: ticket.verified || (["Acción efectiva", "Si"].includes(ticket.verification?.result) ? "Si" : ["Acción no efectiva", "No"].includes(ticket.verification?.result) ? "No" : ""),
     closedAt: ticket.closedAt || (ticket.status === STATUS.CLOSED ? ticket.updatedAt : "")
   };
 }
@@ -227,7 +231,7 @@ async function saveRemoteTicket(ticket, method = "PUT") {
     });
     if (!response.ok) throw new Error(`API ${response.status}`);
   } catch (error) {
-    showToast("El ticket quedó guardado localmente, pero no se pudo sincronizar");
+    showToast("El requerimiento quedó guardado localmente, pero no se pudo sincronizar");
   }
 }
 function nowIso() { return new Date().toISOString(); }
@@ -269,12 +273,17 @@ function optionMarkup(options, selected, blankLabel = "") {
 function renderDashboard() {
   const query = $("#searchInput").value.trim().toLowerCase();
   const selectedStatus = $("#statusFilter").value;
+  const totals = tickets.reduce((summary, ticket) => { summary[operationalStatus(ticket)] += 1; return summary; }, { Pendiente: 0, "En proceso": 0, Finalizada: 0 });
+  $("#totalCount").textContent = tickets.length;
+  $("#pendingCount").textContent = totals.Pendiente;
+  $("#progressCount").textContent = totals["En proceso"];
+  $("#finishedCount").textContent = totals.Finalizada;
   const visible = tickets.filter(ticket => {
     const matchesQuery = !query || [ticket.id, ticket.customer, ticket.subject, ticket.operator, ticket.requestedTo].some(value => String(value || "").toLowerCase().includes(query));
     const matchesStatus = selectedStatus === "all" || operationalStatus(ticket) === selectedStatus;
     return matchesQuery && matchesStatus;
   }).sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
-  $("#resultCount").textContent = `${visible.length} ${visible.length === 1 ? "ticket" : "tickets"}`;
+  $("#resultCount").textContent = `${visible.length} ${visible.length === 1 ? "requerimiento" : "requerimientos"}`;
   $("#ticketTableBody").innerHTML = visible.map(ticket => `<tr data-open-ticket="${ticket.id}">
     <td><span class="ticket-id">${ticket.id}</span></td>
     <td><span class="updated">${formatDate(ticket.createdAt)}</span></td>
@@ -296,12 +305,10 @@ function renderDetail(ticket) {
   const canTake = activeRole === "sistemas" && ticket.status === STATUS.ASSIGNED;
   const canResolve = activeRole === "sistemas" && ticket.status === STATUS.ANALYSIS;
   const canVerify = activeRole === "calidad" && [STATUS.RESOLVED, STATUS.VERIFICATION].includes(ticket.status);
-  const canClose = activeRole === "calidad" && ticket.status === STATUS.VERIFICATION && ticket.verification?.result === "Acción efectiva";
   const primaryAction = canAssign ? `<button class="button button-primary" data-action="assign">Derivar a Sistemas <span>→</span></button>`
     : canTake ? `<button class="button button-primary" data-action="take">Tomar caso <span>→</span></button>`
-    : canResolve ? `<button class="button button-primary" data-action="resolve">Registrar resolución <span>→</span></button>`
-    : canClose ? `<button class="button button-primary" data-action="close">Cerrar acción correctiva <span>✓</span></button>`
-    : canVerify ? `<button class="button button-primary" data-action="verify">Verificar acción <span>→</span></button>` : "";
+    : canResolve ? `<button class="button button-primary" data-action="resolve">Registrar corrección <span>→</span></button>`
+    : canVerify ? `<button class="button button-primary" data-action="verify">Verificar requerimiento <span>→</span></button>` : "";
   $("#detailContent").innerHTML = `<div class="detail-top">
     <div><a class="back-link" href="#dashboard">← Volver al panel</a><div class="detail-title-row"><h1>${escapeHtml(ticket.subject)}</h1>${statusBadge(operationalStatus(ticket))}</div><div class="detail-meta"><span><strong>${ticket.id}</strong></span><span>Fecha ${formatDate(ticket.createdAt)}</span><span>Operador <strong>${escapeHtml(ticket.operator || ticket.createdBy)}</strong></span></div></div>
     <div class="detail-actions">${primaryAction}<button class="button button-secondary" data-action="edit">Editar datos</button><button class="button button-secondary" data-action="copy">Copiar número</button></div>
@@ -311,18 +318,16 @@ function renderDetail(ticket) {
       <article class="info-card"><div class="info-card-heading"><h2>Fase 1 · Registro de la no conformidad</h2><span class="muted">Origen del caso</span></div><div class="read-grid">
         ${readField("Razón social", ticket.customer)}${readField("Operador", ticket.operator || ticket.createdBy)}${readField("Solicitado a", ticket.requestedTo)}${readField("Descripción", ticket.description || ticket.subject, true)}${ticket.contact ? readField("Contacto", ticket.contact) : ""}
       </div></article>
-      <article class="info-card response-card"><div class="info-card-heading"><h2><span class="systems-icon">↗</span> Fases 2 y 3 · Acción de Sistemas</h2>${ticket.correctiveNumber ? `<span class="muted">N° AC ${ticket.correctiveNumber}</span>` : ""}</div>
-        ${ticket.correctiveAction ? `<div class="field-readonly">${readField("Acción correctiva definida", ticket.correctiveAction, true)}</div>` : `<div class="next-step"><strong>Próximo paso de Sistemas</strong>Tomar el caso, documentar el análisis y definir la acción correctiva.</div>`}
-        ${ticket.resolution ? `<div class="field-readonly">${readField("Respuesta / resolución de Sistemas", ticket.resolution, true)}</div>` : ""}
-        ${ticket.actionTaken ? `<div class="field-readonly">${readField("Acción tomada", ticket.actionTaken, true)}</div>` : ""}
-        ${ticket.systemsResponsible ? `<div class="field-readonly">${readField("Responsable de la acción", ticket.systemsResponsible)}</div>` : ""}
+      <article class="info-card response-card"><div class="info-card-heading"><h2><span class="systems-icon">↗</span> Corrección de Sistemas</h2></div>
+        ${ticket.correction || ticket.correctiveAction || ticket.resolution ? `<div class="field-readonly">${readField("Corrección realizada", ticket.correction || ticket.correctiveAction || ticket.resolution, true)}</div>` : `<div class="next-step"><strong>Próximo paso de Sistemas</strong>Registrar la corrección realizada y una observación.</div>`}
+        ${ticket.observation || ticket.actionTaken ? `<div class="field-readonly">${readField("Observación", ticket.observation || ticket.actionTaken, true)}</div>` : ""}
       </article>
-      <article class="info-card timeline-card"><h2>Historial del ticket</h2><div class="timeline">${ticket.history.map(item => `<div class="timeline-item ${item.complete ? "complete" : ""}"><span class="timeline-dot"></span><div class="timeline-copy"><strong>${escapeHtml(item.title)}</strong><p>${escapeHtml(item.text)}</p><time>${item.date ? formatDate(item.date, true) : "Pendiente"}</time></div></div>`).join("")}</div></article>
+      <article class="info-card timeline-card"><h2>Historial del requerimiento</h2><div class="timeline">${ticket.history.map(item => `<div class="timeline-item ${item.complete ? "complete" : ""}"><span class="timeline-dot"></span><div class="timeline-copy"><strong>${escapeHtml(item.title)}</strong><p>${escapeHtml(item.text)}</p><time>${item.date ? formatDate(item.date, true) : "Pendiente"}</time></div></div>`).join("")}</div></article>
     </div>
     <aside class="side-stack">
       <article class="info-card side-card"><h2>Resumen operativo</h2><div class="assignee"><span class="mini-avatar system">${initials(ticket.requestedTo || ticket.assignee || "Sin asignar")}</span><div><strong>${escapeHtml(ticket.requestedTo || ticket.assignee || "Sin asignar")}</strong><span>Solicitado a</span></div></div><div class="sidebar-divider"></div><div class="side-details"><div class="side-detail"><span>Prioridad</span><strong class="priority ${ticket.priority}">${escapeHtml(ticket.priority || "—")}</strong></div><div class="side-detail"><span>Estado</span><strong>${operationalStatus(ticket)}</strong></div><div class="side-detail"><span>Fecha de cierre</span><strong>${formatDate(ticket.closedAt)}</strong></div><div class="side-detail"><span>Verificado</span><strong>${escapeHtml(ticket.verified || "—")}</strong></div></div></article>
-      ${ticket.verification ? `<article class="info-card side-card"><h2>Fase 4 · Verificación</h2><div class="side-details"><div class="side-detail"><span>Resultado</span><strong>${escapeHtml(ticket.verification.result)}</strong></div><div class="side-detail"><span>Verificado por</span><strong>${escapeHtml(ticket.verification.by)}</strong></div><div class="side-detail"><span>Fecha</span><strong>${formatDate(ticket.verification.date)}</strong></div></div><p class="internal-note">${escapeHtml(ticket.verification.observations || "Sin observaciones")}</p></article>` : ""}
-      <article class="info-card side-card"><p class="eyebrow">RESPUESTA AL CLIENTE</p><div class="next-step"><strong>${ticket.status === STATUS.CLOSED ? "Caso cerrado" : activeRole === "sistemas" ? "Cuando resuelvas" : "Cuando Sistemas responda"}</strong>${ticket.status === STATUS.CLOSED ? "La acción correctiva fue verificada y cerrada." : activeRole === "sistemas" ? "registrá también el texto que Atención podrá comunicar al cliente." : "vas a poder revisar la resolución y enviar una respuesta formal al cliente."}</div><p class="internal-note">La respuesta queda dentro del ticket para mantener una trazabilidad completa.</p></article>
+      ${ticket.verification ? `<article class="info-card side-card"><h2>Verificación de Soporte</h2><div class="side-details"><div class="side-detail"><span>Verificado</span><strong>${escapeHtml(ticket.verified || "—")}</strong></div><div class="side-detail"><span>Verificado por</span><strong>${escapeHtml(ticket.verification.by)}</strong></div><div class="side-detail"><span>Fecha</span><strong>${formatDate(ticket.verification.date)}</strong></div></div><p class="internal-note">${escapeHtml(ticket.verification.observations || "Sin observaciones")}</p></article>` : ""}
+      <article class="info-card side-card"><p class="eyebrow">SEGUIMIENTO</p><div class="next-step"><strong>${ticket.status === STATUS.CLOSED ? "Requerimiento finalizado" : activeRole === "sistemas" ? "Corrección pendiente" : "Esperando corrección de Sistemas"}</strong>${ticket.status === STATUS.CLOSED ? "Soporte verificó la corrección registrada." : activeRole === "sistemas" ? "Registrá la corrección y una observación." : "Soporte podrá verificar el resultado cuando Sistemas responda."}</div></article>
     </aside>
   </div>`;
   $$('[data-action]', $("#detailContent")).forEach(button => button.addEventListener("click", () => handleDetailAction(button.dataset.action, ticket.id)));
@@ -345,7 +350,7 @@ function openTicket(id) { selectedTicketId = id; location.hash = `ticket/${id}`;
 
 function addHistory(ticket, title, text, complete = true) {
   ticket.history = ticket.history || [];
-  ticket.history = ticket.history.filter(item => !["Derivación a Sistemas", "Derivado a Sistemas", "Caso tomado por Sistemas", "Respuesta de Sistemas", "Verificación y cierre"].includes(item.title) || item.complete);
+  ticket.history = ticket.history.filter(item => !["Derivación a Sistemas", "Derivado a Sistemas", "Caso tomado por Sistemas", "Respuesta de Sistemas", "Verificación y cierre", "Corrección registrada", "Verificación de Soporte"].includes(item.title) || item.complete);
   ticket.history.push({ title, text, date: nowIso(), complete });
 }
 
@@ -354,11 +359,10 @@ function handleDetailAction(action, id) {
   if (!ticket) return;
   if (action === "copy") { navigator.clipboard?.writeText(ticket.id); showToast(`${ticket.id} copiado`); return; }
   if (action === "edit") { openEditModal(ticket); return; }
-  if (action === "assign") { ticket.status = STATUS.ASSIGNED; ticket.assignee = ticket.requestedTo || "Sistemas"; ticket.updatedAt = nowIso(); addHistory(ticket, "Derivado a Sistemas", `El caso fue enviado a ${ticket.requestedTo || "Sistemas"}.`); saveTickets(ticket); renderDetail(ticket); showToast("Ticket derivado a Sistemas"); return; }
+  if (action === "assign") { ticket.status = STATUS.ASSIGNED; ticket.assignee = ticket.requestedTo || "Sistemas"; ticket.updatedAt = nowIso(); addHistory(ticket, "Derivado a Sistemas", `El requerimiento fue enviado a ${ticket.requestedTo || "Sistemas"}.`); saveTickets(ticket); renderDetail(ticket); showToast("Requerimiento derivado a Sistemas"); return; }
   if (action === "take") { ticket.status = STATUS.ANALYSIS; ticket.assignee = ticket.requestedTo || ticket.assignee || "Sistemas"; ticket.updatedAt = nowIso(); addHistory(ticket, "Caso tomado por Sistemas", "Sistemas comenzó el análisis técnico."); saveTickets(ticket); renderDetail(ticket); showToast("El caso quedó en análisis"); return; }
   if (action === "resolve") { openResolutionModal(ticket); return; }
   if (action === "verify") { openVerificationModal(ticket); return; }
-  if (action === "close") { ticket.status = STATUS.CLOSED; ticket.closedAt = nowIso(); ticket.updatedAt = ticket.closedAt; addHistory(ticket, "Acción correctiva cerrada", "La no conformidad quedó cerrada."); saveTickets(ticket); renderDetail(ticket); showToast("Acción correctiva cerrada"); return; }
 }
 
 function openEditModal(ticket) {
@@ -395,8 +399,8 @@ function openEditModal(ticket) {
     ticket.priority = form.get("priority");
     ticket.description = form.get("description") || ticket.subject;
     ticket.verified = nextVerified;
-    if (nextVerified === "Si") ticket.verification = { ...(ticket.verification || {}), result: "Acción efectiva", date: ticket.verification?.date || nowIso(), by: ticket.verification?.by || ticket.operator };
-    else if (nextVerified === "No") ticket.verification = { ...(ticket.verification || {}), result: "Acción no efectiva", date: ticket.verification?.date || nowIso(), by: ticket.verification?.by || ticket.operator };
+    if (nextVerified === "Si") ticket.verification = { ...(ticket.verification || {}), result: "Si", date: ticket.verification?.date || nowIso(), by: ticket.verification?.by || ticket.operator };
+    else if (nextVerified === "No") ticket.verification = { ...(ticket.verification || {}), result: "No", date: ticket.verification?.date || nowIso(), by: ticket.verification?.by || ticket.operator };
     else ticket.verification = null;
     if (nextStatus === "Pendiente") { ticket.status = STATUS.NEW; ticket.closedAt = ""; }
     if (nextStatus === "En proceso") { ticket.status = [STATUS.NEW, STATUS.CLOSED].includes(ticket.status) ? STATUS.ASSIGNED : ticket.status; ticket.closedAt = ""; }
@@ -411,13 +415,13 @@ function openEditModal(ticket) {
 }
 
 function openResolutionModal(ticket) {
-  const modal = createModal("Registrar resolución de Sistemas", `<form id="resolutionForm" class="modal-form"><p class="field-help">Completá la acción correctiva, lo realizado y el texto que Atención puede comunicar al cliente.</p><label class="field"><span>Acción correctiva definida <em>*</em></span><textarea name="correctiveAction" required placeholder="Qué se hará para eliminar la causa del problema..."></textarea></label><label class="field"><span>Acción tomada <em>*</em></span><textarea name="actionTaken" required placeholder="Qué se hizo concretamente..."></textarea></label><label class="field"><span>Respuesta / resolución para comunicar <em>*</em></span><textarea name="resolution" required placeholder="Respuesta clara para Atención y el cliente..."></textarea></label><label class="field"><span>Responsable de la acción</span><input name="systemsResponsible" value="Equipo de Sistemas" /></label><div class="form-footer"><button type="button" class="button button-secondary" data-close-modal>Cancelar</button><button type="submit" class="button button-primary">Guardar resolución</button></div></form>`);
-  $("#resolutionForm", modal).addEventListener("submit", event => { event.preventDefault(); const form = new FormData(event.target); ticket.correctiveNumber = ticket.correctiveNumber || nextCorrectiveNumber(); ticket.correctiveAction = form.get("correctiveAction"); ticket.actionTaken = form.get("actionTaken"); ticket.resolution = form.get("resolution"); ticket.systemsResponsible = form.get("systemsResponsible") || "Equipo de Sistemas"; ticket.status = STATUS.RESOLVED; ticket.updatedAt = nowIso(); addHistory(ticket, "Respuesta de Sistemas", `Resolución registrada por ${ticket.systemsResponsible}.`); saveTickets(ticket); closeModal(); renderDetail(ticket); showToast("Resolución registrada. Calidad puede verificarla"); });
+  const modal = createModal("Registrar corrección de Sistemas", `<form id="resolutionForm" class="modal-form"><label class="field"><span>Corrección realizada <em>*</em></span><textarea name="correction" required placeholder="Qué se corrigió para resolver el requerimiento..."></textarea></label><label class="field"><span>Observación</span><textarea name="observation" placeholder="Dato relevante sobre la corrección realizada..."></textarea></label><div class="form-footer"><button type="button" class="button button-secondary" data-close-modal>Cancelar</button><button type="submit" class="button button-primary">Guardar corrección</button></div></form>`);
+  $("#resolutionForm", modal).addEventListener("submit", event => { event.preventDefault(); const form = new FormData(event.target); ticket.correction = form.get("correction"); ticket.observation = form.get("observation"); ticket.correctiveAction = ticket.correction; ticket.actionTaken = ticket.observation; ticket.resolution = ticket.correction; ticket.status = STATUS.RESOLVED; ticket.verified = ""; ticket.verification = null; ticket.closedAt = ""; ticket.updatedAt = nowIso(); addHistory(ticket, "Corrección registrada", "Sistemas registró la corrección realizada."); saveTickets(ticket); closeModal(); renderDetail(ticket); showToast("Corrección registrada. Soporte puede verificarla"); });
 }
 
 function openVerificationModal(ticket) {
-  const modal = createModal("Verificar acción implementada", `<form id="verificationForm" class="modal-form"><p class="field-help">Esta instancia corresponde a la verificación de efectividad por Atención / Calidad.</p><label class="field"><span>Resultado de la verificación <em>*</em></span><select name="result" required><option value="Acción efectiva">Acción efectiva</option><option value="Acción no efectiva">Acción no efectiva</option></select></label><label class="field"><span>Observaciones</span><textarea name="observations" placeholder="Qué se comprobó y qué evidencia queda..."></textarea></label><div class="form-footer"><button type="button" class="button button-secondary" data-close-modal>Cancelar</button><button type="submit" class="button button-primary">Guardar verificación</button></div></form>`);
-  $("#verificationForm", modal).addEventListener("submit", event => { event.preventDefault(); const form = new FormData(event.target); const result = form.get("result"); ticket.verification = { result, observations: form.get("observations"), date: nowIso(), by: ticket.operator || "Calidad" }; ticket.verified = result === "Acción efectiva" ? "Si" : "No"; ticket.status = result === "Acción efectiva" ? STATUS.VERIFICATION : STATUS.ANALYSIS; ticket.updatedAt = nowIso(); addHistory(ticket, result === "Acción efectiva" ? "Acción verificada" : "Verificación: requiere ajustes", result === "Acción efectiva" ? `Acción efectiva. Verificación realizada por ${ticket.operator || "Calidad"}.` : "La acción no fue efectiva; Sistemas debe revisar el caso."); saveTickets(ticket); closeModal(); renderDetail(ticket); showToast(result === "Acción efectiva" ? "Acción verificada. Ya puede cerrarse" : "El ticket volvió a Sistemas para ajustes"); });
+  const modal = createModal("Verificar requerimiento", `<form id="verificationForm" class="modal-form"><label class="field"><span>¿La corrección fue realizada? <em>*</em></span><select name="result" required><option value="Si">Sí</option><option value="No">No</option></select></label><label class="field"><span>Observación</span><textarea name="observations" placeholder="Qué se verificó o qué falta corregir..."></textarea></label><div class="form-footer"><button type="button" class="button button-secondary" data-close-modal>Cancelar</button><button type="submit" class="button button-primary">Guardar verificación</button></div></form>`);
+  $("#verificationForm", modal).addEventListener("submit", event => { event.preventDefault(); const form = new FormData(event.target); const result = form.get("result"); const verified = result === "Si"; ticket.verification = { result, observations: form.get("observations"), date: nowIso(), by: ticket.operator || "Soporte" }; ticket.verified = result; ticket.status = verified ? STATUS.CLOSED : STATUS.ANALYSIS; ticket.closedAt = verified ? nowIso() : ""; ticket.updatedAt = nowIso(); addHistory(ticket, verified ? "Requerimiento finalizado" : "Verificación pendiente", verified ? "Soporte verificó la corrección realizada." : "Soporte indicó que el requerimiento requiere una nueva revisión."); saveTickets(ticket); closeModal(); renderDetail(ticket); showToast(verified ? "Requerimiento finalizado" : "Volvió a Sistemas para revisión"); });
 }
 
 function createModal(title, content) {
@@ -428,8 +432,13 @@ function showToast(message) { const toast = $("#toast"); toast.textContent = mes
 function nextTicketNumber() { return Math.max(0, ...tickets.map(ticket => ticket.number || Number(ticket.id.replace(/\D/g, "")) || 0)) + 1; }
 function nextCorrectiveNumber() { return Math.max(0, ...tickets.map(ticket => ticket.correctiveNumber || 0)) + 1; }
 
+function openSystemsAccess() {
+  const modal = createModal("Acceso a Sistemas", '<form id="systemsAccessForm" class="modal-form"><label class="field"><span>Contraseña <em>*</em></span><input type="password" name="password" required autocomplete="current-password" /></label><div class="form-footer"><button type="button" class="button button-secondary" data-close-modal>Cancelar</button><button type="submit" class="button button-primary">Ingresar</button></div></form>');
+  $("#systemsAccessForm", modal).addEventListener("submit", event => { event.preventDefault(); const form = new FormData(event.target); if (form.get("password") !== SYSTEM_PASSWORD) { showToast("Contraseña incorrecta"); return; } systemUnlocked = true; sessionStorage.setItem(SYSTEM_ACCESS_KEY, "1"); activeRole = "sistemas"; localStorage.setItem(ROLE_KEY, activeRole); $("#roleSelect").value = activeRole; closeModal(); if (selectedTicketId && location.hash.startsWith("#ticket/")) renderDetail(ticketById(selectedTicketId)); showToast("Perfil Sistemas activo"); });
+}
+
 $("#roleSelect").value = activeRole;
-$("#roleSelect").addEventListener("change", event => { activeRole = event.target.value; localStorage.setItem(ROLE_KEY, activeRole); if (selectedTicketId && location.hash.startsWith("#ticket/")) renderDetail(ticketById(selectedTicketId)); showToast(activeRole === "sistemas" ? "Perfil Sistemas activo" : "Perfil Atención / Calidad activo"); });
+$("#roleSelect").addEventListener("change", event => { const nextRole = event.target.value; if (nextRole === "sistemas" && !systemUnlocked) { event.target.value = activeRole; openSystemsAccess(); return; } activeRole = nextRole; localStorage.setItem(ROLE_KEY, activeRole); if (selectedTicketId && location.hash.startsWith("#ticket/")) renderDetail(ticketById(selectedTicketId)); showToast(activeRole === "sistemas" ? "Perfil Sistemas activo" : "Perfil Atención / Calidad activo"); });
 $("#searchInput").addEventListener("input", renderDashboard);
 $("#statusFilter").addEventListener("change", () => { currentQuickFilter = "all"; renderDashboard(); });
 $$("[data-quick-filter]").forEach(button => button.addEventListener("click", () => { currentQuickFilter = button.dataset.quickFilter; $("#statusFilter").value = "all"; renderDashboard(); }));
@@ -441,11 +450,11 @@ $("#newTicketForm").addEventListener("submit", event => {
   const requestedTo = form.get("requestedTo");
   const requestDate = form.get("requestDate") || todayInput();
   const created = String(requestDate) + "T12:00:00";
-  const ticket = { id: "RC-" + String(number).padStart(4, "0"), number, customer: form.get("customer"), contact: "", subject: form.get("subject"), typology: "Reclamo de cliente", sourceSector: "Atención al Cliente", operator, createdBy: operator, requestedTo, priority: form.get("priority"), targetDate: "", description: form.get("description") || form.get("subject"), immediateAction: "", status: STATUS.NEW, assignee: "Sin asignar", createdAt: created, updatedAt: created, correctiveNumber: null, correctiveAction: "", resolution: "", actionTaken: "", systemsResponsible: "", verification: null, verified: "", closedAt: "", history: [{ title: "Ticket creado", text: "Registrado por " + operator + ".", date: created, complete: true }, { title: "Derivado a Sistemas", text: "Pendiente de enviar el caso a " + requestedTo + ".", date: null, complete: false }, { title: "Respuesta de Sistemas", text: "Pendiente de registrar la resolución.", date: null, complete: false }, { title: "Verificación y cierre", text: "Pendiente de verificación.", date: null, complete: false }] };
+  const ticket = { id: "RC-" + String(number).padStart(4, "0"), number, customer: form.get("customer"), contact: "", subject: form.get("subject"), typology: "Reclamo de cliente", sourceSector: "Atención al Cliente", operator, createdBy: operator, requestedTo, priority: form.get("priority"), targetDate: "", description: form.get("description") || form.get("subject"), immediateAction: "", status: STATUS.NEW, assignee: "Sin asignar", createdAt: created, updatedAt: created, correctiveNumber: null, correctiveAction: "", correction: "", observation: "", resolution: "", actionTaken: "", systemsResponsible: "", verification: null, verified: "", closedAt: "", history: [{ title: "Requerimiento registrado", text: "Registrado por " + operator + ".", date: created, complete: true }, { title: "Derivado a Sistemas", text: "Pendiente de enviar el caso a " + requestedTo + ".", date: null, complete: false }, { title: "Corrección registrada", text: "Pendiente de registrar la corrección.", date: null, complete: false }, { title: "Verificación de Soporte", text: "Pendiente de verificación.", date: null, complete: false }] };
   tickets.push(ticket);
   saveTickets(ticket, "POST");
   event.target.reset();
-  showToast(ticket.id + " creado correctamente");
+  showToast("Requerimiento " + ticket.id + " creado correctamente");
   openTicket(ticket.id);
 });
 
