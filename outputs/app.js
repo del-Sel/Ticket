@@ -197,7 +197,9 @@ function normalizeTicket(ticket) {
     history: (ticket.history || []).map(item => {
       const sentAutomatically = ["Derivación a Sistemas", "Derivado a Sistemas", "Enviado a Sistemas"].includes(item.title) && !item.complete && ticket.status === STATUS.NEW;
       const processStarted = ["Caso tomado por Sistemas", "Revisión iniciada por Sistemas", "Proceso iniciado"].includes(item.title);
-      return { ...item, title: "Enviado a Sistemas" === historyTitles[item.title] || sentAutomatically ? "Enviado a Sistemas" : historyTitles[item.title] || item.title, text: sentAutomatically ? `El requerimiento fue enviado a ${requestedTo}.` : processStarted ? (item.complete ? "Requerimiento en proceso." : "Pendiente de inicio.") : item.text, date: sentAutomatically ? item.date || ticket.createdAt : item.date, complete: sentAutomatically ? true : item.complete };
+      const displayTitle = "Enviado a Sistemas" === historyTitles[item.title] || sentAutomatically ? "Enviado a Sistemas" : historyTitles[item.title] || item.title;
+      const conciseText = ["Respuesta de Sistemas", "Corrección registrada"].includes(item.title) ? "Corrección registrada." : item.text;
+      return { ...item, title: displayTitle, text: sentAutomatically ? `El requerimiento fue enviado a ${requestedTo}.` : processStarted ? (item.complete ? "Requerimiento en proceso." : "Pendiente de inicio.") : conciseText, date: sentAutomatically ? item.date || ticket.createdAt : item.date, complete: sentAutomatically ? true : item.complete };
     }),
     verified: ticket.verified || (["Acción efectiva", "Si"].includes(ticket.verification?.result) ? "Si" : ["Acción no efectiva", "No"].includes(ticket.verification?.result) ? "No" : ""),
     closedAt: ticket.closedAt || (ticket.status === STATUS.CLOSED ? ticket.updatedAt : "")
