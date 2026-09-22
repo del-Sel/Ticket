@@ -286,6 +286,10 @@ function operationalStatus(ticket) {
   if ([STATUS.NEW, STATUS.ASSIGNED].includes(ticket.status)) return "Pendiente";
   return "En proceso";
 }
+function rowStatusClass(ticket) {
+  const status = operationalStatus(ticket);
+  return status === "En proceso" ? "row-progress" : status === "Finalizada" ? "row-finished" : "row-pending";
+}
 function dateInputValue(value) { return value ? String(value).slice(0, 10) : ""; }
 function optionMarkup(options, selected, blankLabel = "") {
   const blank = blankLabel ? `<option value="">${escapeHtml(blankLabel)}</option>` : "";
@@ -362,7 +366,7 @@ function renderDashboard() {
     return matchesQuery && matchesStatus && matchesPriority && matchesOperator && matchesRequestedTo && matchesVerification;
   }).sort(compareTickets);
   $("#resultCount").textContent = `${visible.length} ${visible.length === 1 ? "requerimiento" : "requerimientos"}`;
-  $("#ticketTableBody").innerHTML = visible.map(ticket => `<tr data-open-ticket="${ticket.id}">
+  $("#ticketTableBody").innerHTML = visible.map(ticket => `<tr class="ticket-row ${rowStatusClass(ticket)}" data-open-ticket="${ticket.id}">
     <td><span class="ticket-id">${recordLabel(ticket)}</span></td>
     <td><span class="updated">${formatDate(ticket.createdAt)}</span></td>
     <td><span class="ticket-customer strong-cell">${escapeHtml(ticket.customer)}</span></td>
