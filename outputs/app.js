@@ -157,9 +157,10 @@ const seedTickets = [
 
 let tickets = loadTickets();
 let apiAvailable = false;
-let activeRole = localStorage.getItem(ROLE_KEY) || "calidad";
+const savedRole = localStorage.getItem(ROLE_KEY);
+let activeRole = savedRole === "calidad" ? "soporte" : (savedRole || "soporte");
 let systemUnlocked = false;
-if (activeRole === "sistemas") { activeRole = "calidad"; localStorage.setItem(ROLE_KEY, activeRole); }
+if (activeRole === "sistemas") { activeRole = "soporte"; localStorage.setItem(ROLE_KEY, activeRole); }
 let currentQuickFilter = "all";
 let sortKey = "number";
 let sortDirection = "asc";
@@ -381,7 +382,7 @@ function renderDashboard() {
 function renderDetail(ticket) {
   const canTake = activeRole === "sistemas" && [STATUS.NEW, STATUS.ASSIGNED].includes(ticket.status);
   const canResolve = activeRole === "sistemas" && ticket.status === STATUS.ANALYSIS;
-  const canVerify = activeRole === "calidad" && [STATUS.RESOLVED, STATUS.VERIFICATION].includes(ticket.status);
+  const canVerify = activeRole === "soporte" && [STATUS.RESOLVED, STATUS.VERIFICATION].includes(ticket.status);
   const primaryAction = canTake ? `<button class="button button-primary" data-action="take">Comenzar proceso <span>→</span></button>`
     : canResolve ? `<button class="button button-primary" data-action="resolve">Finalizar requerimiento <span>→</span></button>`
     : canVerify ? `<button class="button button-primary" data-action="verify">Verificar requerimiento <span>→</span></button>` : "";
