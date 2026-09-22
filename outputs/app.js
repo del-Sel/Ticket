@@ -1,7 +1,7 @@
 const STORAGE_KEY = "fulmar-reclamos-v1";
 const ROLE_KEY = "fulmar-role-v1";
 const API_PATH = "/api/tickets";
-const SYSTEM_PASSWORD = "35426";
+const SYSTEM_PASSWORD = "35421";
 const OPERATORS = ["Cristian Sievert", "Santiago del Sel", "Ramiro Urgorri"];
 const REQUESTED_TO = ["Marcos Barlotti"];
 const EXCEL_STATUS = ["Pendiente", "En proceso", "Finalizada"];
