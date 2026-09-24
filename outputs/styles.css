@@ -80,3 +80,11 @@ a { color: inherit; text-decoration: none; }
 .request-subgroup[hidden], .request-section[hidden], [data-general-redirection-only][hidden], [data-general-other-only][hidden] { display: none; }
 .field-help { display: block; color: var(--muted); font-size: 10px; line-height: 1.35; }
 .request-details-card { border-top: 3px solid #3c718e; }
+.attachment-preview { display: flex; flex-wrap: wrap; gap: 6px; }
+.attachment-chip { padding: 5px 8px; border: 1px solid var(--line); border-radius: 3px; background: #f7f9fb; color: var(--muted); font-size: 10px; }
+.attachment-grid { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.attachment-card { display: grid; gap: 6px; min-width: 0; padding: 7px; border: 1px solid var(--line); border-radius: 3px; background: #f9fbfc; }
+.attachment-card:hover { border-color: #3c718e; }
+.attachment-card img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 2px; background: #e8edf1; }
+.attachment-card span { overflow: hidden; color: var(--muted); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
+@media (max-width: 680px) { .attachment-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
