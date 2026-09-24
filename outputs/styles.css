@@ -73,3 +73,10 @@ a { color: inherit; text-decoration: none; }
 
 @media (max-width: 980px) { .main-content { padding-inline: 22px; }.detail-grid { grid-template-columns: 1fr; }.side-stack { grid-template-columns: 1fr 1fr; }.form-layout { grid-template-columns: 1fr; }.form-side { grid-template-columns: 1fr 1fr; }.form-actions { grid-column: span 2; } }
 @media (max-width: 680px) { .summary-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }.topbar { padding: 8px 15px; }.brand-logo { width: 86px; height: 43px; }.brand-title { padding-left: 10px; font-size: 12px; }.role-switcher span, .avatar { display: none; }.role-switcher select { min-width: 142px; }.main-content { padding: 22px 13px 40px; }.page-heading { align-items: flex-start; flex-direction: column; margin-bottom: 20px; }.page-heading .button { align-self: stretch; }.section-toolbar { align-items: stretch; flex-direction: column; }.toolbar-controls { width: 100%; }.search-box { width: 100%; }.table-filters { align-items: stretch; }.table-filters .select-control, .table-filters .filter-clear { flex: 1 1 145px; }.select-control { flex: 0 0 155px; }.two-col { grid-template-columns: 1fr; }.field-span-2 { grid-column: span 1; }.form-side { grid-template-columns: 1fr; }.form-actions { grid-column: span 1; }.detail-top { align-items: flex-start; flex-direction: column; }.detail-actions { justify-content: flex-start; }.read-grid { grid-template-columns: 1fr; }.read-grid .field-readonly:nth-child(2) { margin-top: 13px; padding-top: 13px; border-top: 1px solid #e1e6eb; }.side-stack { grid-template-columns: 1fr; } }
+.request-section { margin-top: 22px; padding-top: 19px; border-top: 1px solid var(--line); }
+.form-section-heading { margin-bottom: 14px; }
+.form-section-heading h3 { margin: 0; color: var(--ink); font-size: 13px; }
+.request-subgroup { margin-top: 14px; }
+.request-subgroup[hidden], .request-section[hidden], [data-general-redirection-only][hidden], [data-general-other-only][hidden] { display: none; }
+.field-help { display: block; color: var(--muted); font-size: 10px; line-height: 1.35; }
+.request-details-card { border-top: 3px solid #3c718e; }
