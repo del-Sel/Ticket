@@ -167,6 +167,7 @@ let sortKey = "number";
 let sortDirection = "asc";
 let selectedTicketId = null;
 let wizardStep = 1;
+let notificationEmail = "santiagotdelsel@gmail.com";
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
 
@@ -210,9 +211,10 @@ function normalizeTicket(ticket) {
   };
 }
 
-function saveTickets(ticket = null, method = "PUT") {
+async function saveTickets(ticket = null, method = "PUT") {
   localStorage.setItem(STORAGE_KEY, JSON.stringify(tickets));
-  if (ticket && apiAvailable) void saveRemoteTicket(ticket, method);
+  if (ticket && apiAvailable) return saveRemoteTicket(ticket, method);
+  return null;
 }
 
 function apiUrl() {
@@ -242,20 +244,35 @@ async function loadRemoteTickets() {
 }
 
 async function saveRemoteTicket(ticket, method = "PUT") {
-  const url = method === "POST" ? apiUrl() : `${apiUrl()}/${encodeURIComponent(ticket.id)}`;
-  if (!url) return;
+  const url = method === "POST" ? apiUrl() : apiUrl() + "/" + encodeURIComponent(ticket.id);
+  if (!url) return null;
   try {
     const response = await fetch(url, {
       method,
       headers: { "Content-Type": "application/json", Accept: "application/json" },
       body: JSON.stringify(ticket)
     });
-    if (!response.ok) throw new Error(`API ${response.status}`);
+    const payload = await response.json().catch(() => ({}));
+    if (!response.ok) throw new Error("API " + response.status);
+    return payload;
   } catch (error) {
     showToast("El requerimiento quedó guardado localmente, pero no se pudo sincronizar");
+    return null;
   }
 }
 
+async function loadNotificationSettings() {
+  const url = apiUrl();
+  if (!url) return;
+  try {
+    const response = await fetch(window.location.origin + "/api/settings", { headers: { Accept: "application/json" } });
+    if (!response.ok) return;
+    const settings = await response.json();
+    if (settings.notificationEmail) notificationEmail = settings.notificationEmail;
+  } catch (error) {
+    // Se conserva el correo inicial hasta que la API esté disponible.
+  }
+}
 function attachmentApiUrl() {
   return ["http:", "https:"].includes(window.location.protocol) ? window.location.origin + "/api/attachments" : null;
 }
@@ -354,7 +371,8 @@ function relativeDate(value) {
   if (days < 7) return `Hace ${days} días`;
   return formatDate(value);
 }
-function statusBadge(status) { return `<span class="status-badge ${statusClass[status] || "status-closed"}">${status}</span>`; }
+function displayStatus(status) { return status === "En proceso" ? "En Proceso" : status; }
+function statusBadge(status) { return `<span class="status-badge ${statusClass[status] || "status-closed"}">${displayStatus(status)}</span>`; }
 function ticketById(id) { return tickets.find(ticket => ticket.id === id); }
 function recordNumber(ticket) { return ticket.number || Number(String(ticket.id || "").replace(/\D/g, "")) || 0; }
 function recordLabel(ticket) { return "RS-" + String(recordNumber(ticket)).padStart(4, "0"); }
@@ -743,13 +761,41 @@ function showToast(message) { const toast = $("#toast"); toast.textContent = mes
 function nextTicketNumber() { return Math.max(0, ...tickets.map(recordNumber)) + 1; }
 function nextCorrectiveNumber() { return Math.max(0, ...tickets.map(ticket => ticket.correctiveNumber || 0)) + 1; }
 
+function syncRoleUi() {
+  const button = $("#notificationSettingsButton");
+  if (button) button.classList.toggle("hidden", activeRole !== "sistemas");
+}
+
+function openNotificationSettings() {
+  if (activeRole !== "sistemas") return;
+  const modal = createModal("Configurar Correo", '<form id="notificationSettingsForm" class="modal-form"><label class="field"><span>Correo de Avisos <em>*</em></span><input type="email" name="notificationEmail" required value="' + escapeHtml(notificationEmail) + '" placeholder="correo@empresa.com" /></label><p class="field-help">Cada nuevo requerimiento se notificará a esta dirección.</p><div class="form-footer"><button type="button" class="button button-secondary" data-close-modal>Cancelar</button><button type="submit" class="button button-primary">Guardar Correo</button></div></form>');
+  $("#notificationSettingsForm", modal).addEventListener("submit", async event => {
+    event.preventDefault();
+    const form = new FormData(event.target);
+    const nextEmail = String(form.get("notificationEmail") || "").trim().toLowerCase();
+    if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(nextEmail)) { showToast("Ingresá un correo válido"); return; }
+    try {
+      const response = await fetch(window.location.origin + "/api/settings", { method: "PUT", headers: { "Content-Type": "application/json", Accept: "application/json" }, body: JSON.stringify({ notificationEmail: nextEmail }) });
+      const payload = await response.json().catch(() => ({}));
+      if (!response.ok) throw new Error(payload.error || "No se pudo guardar el correo");
+      notificationEmail = payload.notificationEmail || nextEmail;
+      closeModal();
+      showToast("Correo de avisos actualizado");
+    } catch (error) {
+      showToast(error.message || "No se pudo guardar el correo");
+    }
+  });
+}
+
 function openSystemsAccess() {
   const modal = createModal("Acceso a Sistemas", '<form id="systemsAccessForm" class="modal-form"><label class="field"><span>Contraseña <em>*</em></span><input type="password" name="password" required autocomplete="current-password" /></label><div class="form-footer"><button type="button" class="button button-secondary" data-close-modal>Cancelar</button><button type="submit" class="button button-primary">Ingresar</button></div></form>');
-  $("#systemsAccessForm", modal).addEventListener("submit", event => { event.preventDefault(); const form = new FormData(event.target); if (form.get("password") !== SYSTEM_PASSWORD) { showToast("Contraseña incorrecta"); return; } systemUnlocked = true; activeRole = "sistemas"; localStorage.setItem(ROLE_KEY, activeRole); $("#roleSelect").value = activeRole; closeModal(); if (selectedTicketId && location.hash.startsWith("#ticket/")) renderDetail(ticketById(selectedTicketId)); showToast("Perfil Sistemas activo"); });
+  $("#systemsAccessForm", modal).addEventListener("submit", event => { event.preventDefault(); const form = new FormData(event.target); if (form.get("password") !== SYSTEM_PASSWORD) { showToast("Contraseña incorrecta"); return; } systemUnlocked = true; activeRole = "sistemas"; localStorage.setItem(ROLE_KEY, activeRole); $("#roleSelect").value = activeRole; syncRoleUi(); closeModal(); if (selectedTicketId && location.hash.startsWith("#ticket/")) renderDetail(ticketById(selectedTicketId)); showToast("Perfil Sistemas activo"); });
 }
 
 $("#roleSelect").value = activeRole;
-$("#roleSelect").addEventListener("change", event => { const nextRole = event.target.value; if (nextRole === "sistemas" && !systemUnlocked) { event.target.value = activeRole; openSystemsAccess(); return; } activeRole = nextRole; if (activeRole !== "sistemas") systemUnlocked = false; localStorage.setItem(ROLE_KEY, activeRole); if (selectedTicketId && location.hash.startsWith("#ticket/")) renderDetail(ticketById(selectedTicketId)); else renderDashboard(); showToast(activeRole === "sistemas" ? "Perfil Sistemas activo" : "Perfil Soporte activo"); });
+syncRoleUi();
+$("#notificationSettingsButton").addEventListener("click", openNotificationSettings);
+$("#roleSelect").addEventListener("change", event => { const nextRole = event.target.value; if (nextRole === "sistemas" && !systemUnlocked) { event.target.value = activeRole; openSystemsAccess(); return; } activeRole = nextRole; if (activeRole !== "sistemas") systemUnlocked = false; syncRoleUi(); localStorage.setItem(ROLE_KEY, activeRole); if (selectedTicketId && location.hash.startsWith("#ticket/")) renderDetail(ticketById(selectedTicketId)); else renderDashboard(); showToast(activeRole === "sistemas" ? "Perfil Sistemas activo" : "Perfil Soporte activo"); });
 $("#searchInput").addEventListener("input", renderDashboard);
 $("#sortFilter").addEventListener("change", event => {
   const match = event.target.value.match(/^(.*)-(asc|desc)$/);
@@ -823,12 +869,12 @@ $("#newTicketForm").addEventListener("submit", async event => {
     if (files.length && !apiAvailable) throw new Error("No se pudo conectar con el almacenamiento de fotos");
     ticket.attachments = files.length ? await uploadAttachments(ticket.id, files) : [];
     tickets.push(ticket);
-    saveTickets(ticket, "POST");
+    const remoteTicket = await saveTickets(ticket, "POST");
     event.target.reset();
     renderAttachmentPreview([]);
     setWizardStep(1);
     syncRequestForm();
-    showToast(recordLabel(ticket) + " creado correctamente");
+    showToast(remoteTicket?.notification?.sent ? recordLabel(ticket) + " creado y notificado por correo" : recordLabel(ticket) + " creado correctamente");
     openTicket(ticket.id);
   } catch (error) {
     showToast(error.message || "No se pudieron guardar las fotos");
@@ -841,3 +887,4 @@ function routeFromHash() { const hash = location.hash.replace(/^#/, "") || "dash
 window.addEventListener("hashchange", routeFromHash);
 routeFromHash();
 void loadRemoteTickets();
+void loadNotificationSettings();
