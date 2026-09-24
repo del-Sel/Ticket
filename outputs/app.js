@@ -504,10 +504,10 @@ function readField(label, value, large = false) { return `<div class="field-read
 }
 function renderRequestDetails(ticket) {
   const type = ticket.requestType || "";
-  if (!type && !ticket.requesterEmail) return "";
+  if (!type) return "";
   const fields = [
     ["Tipo de solicitud", type],
-    ["Correo electrónico", ticket.requesterEmail]
+    
   ];
   if (type === "Reporte de error") {
     fields.push(
