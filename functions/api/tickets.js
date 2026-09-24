@@ -39,7 +39,7 @@ async function notificationEmail(env) {
 async function sendTicketNotification(env, ticket) {
   if (!env.EMAIL) return { sent: false, configured: false };
   const recipient = await notificationEmail(env);
-  const from = env.NOTIFICATION_FROM || "notificaciones@ful-mar.com";
+  const from = env.NOTIFICATION_FROM || "procesos@ful-mar.net";
   const subject = "Nuevo Requerimiento " + ticket.id + " - " + (ticket.customer || "Sin Razón Social");
   const text = [
     subject,
