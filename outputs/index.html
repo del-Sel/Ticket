@@ -5,16 +5,17 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#b51f2d" />
     <title>Seguimiento de requerimientos a Sistemas | Ful-Mar</title>
-    <link rel="stylesheet" href="styles.css?v=20260924-4" />
+    <link rel="stylesheet" href="styles.css?v=20260924-5" />
   </head>
   <body>
     <div class="app-shell">
       <header class="topbar">
         <a class="brand" href="#dashboard" aria-label="Ir al inicio">
           <img class="brand-logo" src="ful-mar-logo.png" alt="Ful-Mar" />
-          <span class="brand-title">Seguimiento de requerimientos a Sistemas</span>
+          <span class="brand-title">Seguimiento de Requerimientos a Sistemas</span>
         </a>
         <div class="topbar-actions">
+          <button id="notificationSettingsButton" class="button button-secondary hidden" type="button">Configurar Correo</button>
           <label class="role-switcher">
             <span>Perfil</span>
             <select id="roleSelect" aria-label="Perfil activo">
@@ -30,19 +31,19 @@
           <section id="dashboardView" class="view" data-view="dashboard">
             <div class="page-heading">
               <div>
-                <h1>Seguimiento de requerimientos a Sistemas</h1>
+                <h1>Seguimiento de Requerimientos a Sistemas</h1>
               </div>
-              <a class="button button-primary" href="#new"><span>＋</span> Registrar requerimiento</a>
+              <a class="button button-primary" href="#new"><span>＋</span> Registrar Requerimiento</a>
             </div>
             <div class="summary-cards" aria-label="Resumen de requerimientos">
               <div class="summary-card"><span>Total</span><strong id="totalCount">0</strong></div>
               <div class="summary-card summary-pending"><span>Pendientes</span><strong id="pendingCount">0</strong></div>
-              <div class="summary-card summary-progress"><span>En proceso</span><strong id="progressCount">0</strong></div>
+              <div class="summary-card summary-progress"><span>En Proceso</span><strong id="progressCount">0</strong></div>
               <div class="summary-card summary-finished"><span>Finalizadas</span><strong id="finishedCount">0</strong></div>
             </div>
             <div class="section-toolbar">
               <div>
-                <h2>Seguimiento de requerimientos a Sistemas</h2>
+                <h2>Seguimiento de Requerimientos a Sistemas</h2>
                 <span class="muted" id="resultCount">0 requerimientos</span>
               </div>
               <div class="toolbar-controls">
@@ -66,7 +67,7 @@
                 <select id="statusFilter" class="select-control" aria-label="Filtrar por estado">
                   <option value="all">Estado: todos</option>
                   <option value="Pendiente">Estado: Pendiente</option>
-                  <option value="En proceso">Estado: En proceso</option>
+                  <option value="En proceso">Estado: En Proceso</option>
                   <option value="Finalizada">Estado: Finalizada</option>
                 </select>
                 <select id="priorityFilter" class="select-control" aria-label="Filtrar por prioridad">
@@ -87,7 +88,7 @@
                   <option value="No">Verificado: No</option>
                   <option value="pending">Verificado: pendiente</option>
                 </select>
-                <button id="clearFilters" class="button button-secondary filter-clear" type="button">Limpiar filtros</button>
+                <button id="clearFilters" class="button button-secondary filter-clear" type="button">Limpiar Filtros</button>
               </div>
             </div>
             <div id="systemsBoard" class="systems-board hidden" aria-label="Vista de trabajo de Sistemas"></div>
@@ -97,13 +98,13 @@
                   <tr>
                     <th><button class="table-sort" type="button" data-sort-key="number">N° <span class="sort-arrow" aria-hidden="true">↑</span></button></th>
                     <th><button class="table-sort" type="button" data-sort-key="createdAt">Fecha <span class="sort-arrow" aria-hidden="true">↕</span></button></th>
-                    <th><button class="table-sort" type="button" data-sort-key="customer">Razón social <span class="sort-arrow" aria-hidden="true">↕</span></button></th>
+                    <th><button class="table-sort" type="button" data-sort-key="customer">Razón Social <span class="sort-arrow" aria-hidden="true">↕</span></button></th>
                     <th><button class="table-sort" type="button" data-sort-key="subject">Requerimiento <span class="sort-arrow" aria-hidden="true">↕</span></button></th>
                     <th><button class="table-sort" type="button" data-sort-key="operator">Operador <span class="sort-arrow" aria-hidden="true">↕</span></button></th>
-                    <th><button class="table-sort" type="button" data-sort-key="requestedTo">Solicitado a <span class="sort-arrow" aria-hidden="true">↕</span></button></th>
+                    <th><button class="table-sort" type="button" data-sort-key="requestedTo">Solicitado A <span class="sort-arrow" aria-hidden="true">↕</span></button></th>
                     <th><button class="table-sort" type="button" data-sort-key="priority">Prioridad <span class="sort-arrow" aria-hidden="true">↕</span></button></th>
                     <th><button class="table-sort" type="button" data-sort-key="status">Estado <span class="sort-arrow" aria-hidden="true">↕</span></button></th>
-                    <th><button class="table-sort" type="button" data-sort-key="closedAt">Fecha de cierre <span class="sort-arrow" aria-hidden="true">↕</span></button></th>
+                    <th><button class="table-sort" type="button" data-sort-key="closedAt">Fecha De Cierre <span class="sort-arrow" aria-hidden="true">↕</span></button></th>
                     <th><button class="table-sort" type="button" data-sort-key="verified">Verificado <span class="sort-arrow" aria-hidden="true">↕</span></button></th>
                   </tr>
                 </thead>
@@ -111,9 +112,9 @@
               </table>
               <div id="emptyState" class="empty-state hidden">
                 <div class="empty-icon">⌕</div>
-                <h3>No hay requerimientos para mostrar</h3>
-                <p>Registrá un nuevo requerimiento para comenzar el seguimiento.</p>
-                <a class="button button-secondary" href="#new">Registrar requerimiento</a>
+                <h3>No Hay Requerimientos Para Mostrar</h3>
+                <p>Registrá un Nuevo Requerimiento Para Comenzar el Seguimiento.</p>
+                <a class="button button-secondary" href="#new">Registrar Requerimiento</a>
               </div>
             </div>
           </section>
@@ -121,87 +122,87 @@
           <section id="newView" class="view hidden" data-view="new">
             <div class="page-heading compact-heading">
               <div>
-                <a class="back-link" href="#dashboard">← Volver al panel</a>
-                <h1>Registrar requerimiento</h1>
+                <a class="back-link" href="#dashboard">← Volver al Panel</a>
+                <h1>Registrar Requerimiento</h1>
               </div>
             </div>
             <form id="newTicketForm" class="form-layout">
               <div class="form-card">
                 <div class="wizard-progress" aria-label="Pasos del formulario">
-                  <div class="wizard-progress-item is-active" data-wizard-indicator="1"><span>01</span><strong>Tipo de solicitud</strong></div>
+                  <div class="wizard-progress-item is-active" data-wizard-indicator="1"><span>01</span><strong>Tipo De Solicitud</strong></div>
                   <div class="wizard-progress-line"></div>
-                  <div class="wizard-progress-item" data-wizard-indicator="2"><span>02</span><strong>Datos y detalle</strong></div>
+                  <div class="wizard-progress-item" data-wizard-indicator="2"><span>02</span><strong>Datos Y Detalle</strong></div>
                 </div>
 
                 <section class="wizard-step" data-wizard-step="1">
                   <div class="form-card-heading">
                     <div class="step-badge">01</div>
-                    <div><h2>Tipo de solicitud</h2><p>Elegí una opción para mostrar los campos correspondientes.</p></div>
+                    <div><h2>Tipo De Solicitud</h2><p>Elegí Una Opción Para Mostrar Los Campos Correspondientes.</p></div>
                   </div>
                   <div class="request-choice-grid" id="requestChoiceGrid">
-                    <button type="button" class="request-choice" data-request-choice="Reporte de error"><strong>Reporte de error</strong><span>Informar un inconveniente en el equipo o sistema.</span></button>
-                    <button type="button" class="request-choice" data-request-choice="Pedido de mejora"><strong>Pedido de mejora</strong><span>Solicitar una modificación o mejora funcional.</span></button>
-                    <button type="button" class="request-choice" data-request-choice="Solicitud General"><strong>Solicitud general</strong><span>Gestionar reprocesamientos, redirecciones u otra solicitud.</span></button>
+                    <button type="button" class="request-choice" data-request-choice="Reporte de error"><strong>Reporte De Error</strong><span>Informar Un Inconveniente En El Equipo O Sistema.</span></button>
+                    <button type="button" class="request-choice" data-request-choice="Pedido de mejora"><strong>Pedido De Mejora</strong><span>Solicitar Una Modificación O Mejora Funcional.</span></button>
+                    <button type="button" class="request-choice" data-request-choice="Solicitud General"><strong>Solicitud General</strong><span>Gestionar Reprocesamientos, Redirecciones U Otra Solicitud.</span></button>
                   </div>
-                  <label class="field wizard-type-select"><span>Tipo de solicitud <em>*</em></span><select id="requestType" name="requestType" required><option value="">Seleccionar</option><option value="Reporte de error">Reporte de error</option><option value="Pedido de mejora">Pedido de mejora</option><option value="Solicitud General">Solicitud General</option></select></label>
+                  <label class="field wizard-type-select"><span>Tipo De Solicitud <em>*</em></span><select id="requestType" name="requestType" required><option value="">Seleccionar</option><option value="Reporte de error">Reporte De Error</option><option value="Pedido de mejora">Pedido De Mejora</option><option value="Solicitud General">Solicitud General</option></select></label>
                 </section>
 
                 <section class="wizard-step hidden" data-wizard-step="2">
                   <div class="form-card-heading">
                     <div class="step-badge">02</div>
-                    <div><h2>Datos y detalle del requerimiento</h2><p>Completá la información que necesita Sistemas para trabajar el caso.</p></div>
+                    <div><h2>Datos Y Detalle Del Requerimiento</h2><p>Completá La Información Que Necesita Sistemas Para Trabajar El Caso.</p></div>
                   </div>
                   <div class="form-grid two-col">
                     <label class="field"><span>Fecha <em>*</em></span><input type="date" name="requestDate" required /></label>
-                    <label class="field"><span>Empresa / razón social <em>*</em></span><input name="customer" required placeholder="Nombre de la empresa" /></label>
-                    <label class="field field-span-2"><span>Requerimiento <em>*</em></span><input name="subject" required placeholder="Título breve del requerimiento" /></label>
-                    <label class="field"><span>Operador <em>*</em></span><select name="operator" required><option value="Cristian Sievert">Cristian Sievert</option><option value="Santiago del Sel">Santiago del Sel</option><option value="Ramiro Urgorri">Ramiro Urgorri</option></select></label>
-                    <label class="field"><span>Solicitado a <em>*</em></span><select name="requestedTo" required><option value="Marcos Barlotti">Marcos Barlotti</option></select></label>
-                    <label class="field field-span-2"><span>Información adicional</span><textarea name="description" rows="4" placeholder="Antecedentes o información adicional del caso"></textarea></label>
-                    <label class="field field-span-2 attachment-field"><span>Adjuntos / fotos</span><input id="attachments" type="file" name="attachments" accept="image/*" multiple /><small class="field-help">Hasta 5 imágenes. Podés seleccionar archivos o pegar una captura con Ctrl+V.</small><div id="attachmentPreview" class="attachment-preview" aria-live="polite"></div></label>
+                    <label class="field"><span>Empresa / Razón Social <em>*</em></span><input name="customer" required placeholder="Nombre De La Empresa" /></label>
+                    <label class="field field-span-2"><span>Requerimiento <em>*</em></span><input name="subject" required placeholder="Título Breve Del Requerimiento" /></label>
+                    <label class="field"><span>Operador <em>*</em></span><select name="operator" required><option value="Cristian Sievert">Cristian Sievert</option><option value="Santiago del Sel">Santiago Del Sel</option><option value="Ramiro Urgorri">Ramiro Urgorri</option></select></label>
+                    <label class="field"><span>Solicitado A <em>*</em></span><select name="requestedTo" required><option value="Marcos Barlotti">Marcos Barlotti</option></select></label>
+                    <label class="field field-span-2"><span>Información Adicional</span><textarea name="description" rows="4" placeholder="Antecedentes O Información Adicional Del Caso"></textarea></label>
+                    <label class="field field-span-2 attachment-field"><span>Adjuntos / Fotos</span><input id="attachments" type="file" name="attachments" accept="image/*" multiple /><small class="field-help">Hasta 5 Imágenes. Podés Seleccionar Archivos O Pegar Una Captura Con Ctrl+V.</small><div id="attachmentPreview" class="attachment-preview" aria-live="polite"></div></label>
                   </div>
 
                 <div class="request-section" data-request-section="Reporte de error" hidden>
-                  <div class="form-section-heading"><h3>Reporte de error</h3></div>
+                  <div class="form-section-heading"><h3>Reporte De Error</h3></div>
                   <div class="form-grid two-col">
-                    <label class="field field-span-2"><span>¿Es un error del equipo o del sistema? <em>*</em></span><select id="incidentOrigin" name="incidentOrigin" data-required><option value="">Seleccionar</option><option value="Equipo">Equipo</option><option value="Sistema">Sistema</option></select><small class="field-help">Indicar dónde se presenta el inconveniente.</small></label>
+                    <label class="field field-span-2"><span>¿Es Un Error Del Equipo O Del Sistema? <em>*</em></span><select id="incidentOrigin" name="incidentOrigin" data-required><option value="">Seleccionar</option><option value="Equipo">Equipo</option><option value="Sistema">Sistema</option></select><small class="field-help">Indicar Dónde Se Presenta El Inconveniente.</small></label>
                   </div>
                   <div class="request-subgroup" data-error-system-only hidden>
                     <div class="form-grid two-col">
-                      <label class="field"><span>Empresas afectadas y cantidad <em>*</em></span><textarea name="affectedCompanies" rows="3" data-required placeholder="Indicar cantidad y empresas"></textarea></label>
-                      <label class="field"><span>Equipos afectados <em>*</em></span><input name="affectedEquipmentCount" data-required placeholder="Cantidad de equipos" /></label>
-                      <label class="field"><span>Días del inconveniente <em>*</em></span><input name="incidentDays" data-required placeholder="Fechas o días"></label>
-                      <label class="field"><span>Tipo de equipo <em>*</em></span><select name="equipmentType" data-required><option value="">Seleccionar</option><option value="FMD">FMD</option><option value="DG">DG</option><option value="DX03">DX03</option></select></label>
-                      <label class="field"><span>ID legajo <em>*</em></span><input name="legajoId" data-required placeholder="ID de referencia"></label>
-                      <label class="field"><span>ID unidad <em>*</em></span><input name="unitId" data-required placeholder="ID de la unidad"></label>
-                      <label class="field field-span-2"><span>Puntos enviados por el equipo <em>*</em></span><textarea name="equipmentPoints" rows="3" data-required placeholder="Detalle de los puntos enviados"></textarea></label>
-                      <label class="field field-span-2"><span>URL del módulo <em>*</em></span><input type="url" name="moduleUrl" data-required placeholder="https://"></label>
-                      <label class="field field-span-2"><span>Observaciones</span><textarea name="observations" rows="3" placeholder="Observaciones del inconveniente"></textarea></label>
-                      <label class="field field-span-2"><span>Captura o enlace de referencia</span><input name="captureReference" placeholder="Enlace a la captura o referencia del caso"></label>
+                      <label class="field"><span>Empresas Afectadas Y Cantidad <em>*</em></span><textarea name="affectedCompanies" rows="3" data-required placeholder="Indicar Cantidad Y Empresas"></textarea></label>
+                      <label class="field"><span>Equipos Afectados <em>*</em></span><input name="affectedEquipmentCount" data-required placeholder="Cantidad De Equipos" /></label>
+                      <label class="field"><span>Días Del Inconveniente <em>*</em></span><input name="incidentDays" data-required placeholder="Fechas O Días"></label>
+                      <label class="field"><span>Tipo De Equipo <em>*</em></span><select name="equipmentType" data-required><option value="">Seleccionar</option><option value="FMD">FMD</option><option value="DG">DG</option><option value="DX03">DX03</option></select></label>
+                      <label class="field"><span>ID Legajo <em>*</em></span><input name="legajoId" data-required placeholder="ID De Referencia"></label>
+                      <label class="field"><span>ID Unidad <em>*</em></span><input name="unitId" data-required placeholder="ID De La Unidad"></label>
+                      <label class="field field-span-2"><span>Puntos Enviados Por El Equipo <em>*</em></span><textarea name="equipmentPoints" rows="3" data-required placeholder="Detalle De Los Puntos Enviados"></textarea></label>
+                      <label class="field field-span-2"><span>URL Del Módulo <em>*</em></span><input type="url" name="moduleUrl" data-required placeholder="https://"></label>
+                      <label class="field field-span-2"><span>Observaciones</span><textarea name="observations" rows="3" placeholder="Observaciones Del Inconveniente"></textarea></label>
+                      <label class="field field-span-2"><span>Captura O Enlace De Referencia</span><input name="captureReference" placeholder="Enlace A La Captura O Referencia Del Caso"></label>
                     </div>
                   </div>
-                  <div class="equipment-note" data-error-equipment-only hidden><strong>Error del equipo</strong><span>Derivá este caso al equipo de Ingeniería para su resolución. Cuando se resuelva, editá los puntos necesarios y reprocesá la operación.</span></div>
+                  <div class="equipment-note" data-error-equipment-only hidden><strong>Error Del Equipo</strong><span>Derivá Este Caso Al Equipo De Ingeniería Para Su Resolución. Cuando Se Resuelva, Editá Los Puntos Necesarios Y Reprocesá La Operación.</span></div>
                 </div>
 
                 <div class="request-section" data-request-section="Pedido de mejora" hidden>
-                  <div class="form-section-heading"><h3>Pedido de mejora</h3></div>
+                  <div class="form-section-heading"><h3>Pedido De Mejora</h3></div>
                   <div class="form-grid two-col">
-                    <label class="field"><span>Tipo de mejora <em>*</em></span><input name="improvementType" data-required placeholder="Indicar el tipo de mejora"></label>
-                    <label class="field"><span>¿Necesita modificación del equipo? <em>*</em></span><select name="equipmentModification" data-required><option value="">Seleccionar</option><option value="Sí">Sí</option><option value="No">No</option><option value="Tal vez">Tal vez</option></select></label>
-                    <label class="field"><span>Alcance <em>*</em></span><input name="scope" data-required placeholder="Indicar el alcance"></label>
-                    <label class="field"><span>URL del módulo</span><input type="url" name="improvementModuleUrl" placeholder="https://"></label>
-                    <label class="field field-span-2"><span>Descripción de la mejora <em>*</em></span><textarea name="improvementDescription" rows="4" data-required placeholder="Describir la mejora solicitada"></textarea></label>
-                    <label class="field field-span-2"><span>Captura o enlace de referencia</span><input name="improvementCapture" placeholder="Enlace a la captura o referencia"></label>
-                    <label class="field"><span>Nivel de urgencia <em>*</em></span><select name="urgency" data-required><option value="">Seleccionar</option><option value="Bajo">Bajo</option><option value="Medio">Medio</option><option value="Alto">Alto</option><option value="Urgente">Urgente</option></select></label>
+                    <label class="field"><span>Tipo De Mejora <em>*</em></span><input name="improvementType" data-required placeholder="Indicar El Tipo De Mejora"></label>
+                    <label class="field"><span>¿Necesita Modificación Del Equipo? <em>*</em></span><select name="equipmentModification" data-required><option value="">Seleccionar</option><option value="Sí">Sí</option><option value="No">No</option><option value="Tal vez">Tal Vez</option></select></label>
+                    <label class="field"><span>Alcance <em>*</em></span><input name="scope" data-required placeholder="Indicar El Alcance"></label>
+                    <label class="field"><span>URL Del Módulo</span><input type="url" name="improvementModuleUrl" placeholder="https://"></label>
+                    <label class="field field-span-2"><span>Descripción De La Mejora <em>*</em></span><textarea name="improvementDescription" rows="4" data-required placeholder="Describir La Mejora Solicitada"></textarea></label>
+                    <label class="field field-span-2"><span>Captura O Enlace De Referencia</span><input name="improvementCapture" placeholder="Enlace A La Captura O Referencia"></label>
+                    <label class="field"><span>Nivel De Urgencia <em>*</em></span><select name="urgency" data-required><option value="">Seleccionar</option><option value="Bajo">Bajo</option><option value="Medio">Medio</option><option value="Alto">Alto</option><option value="Urgente">Urgente</option></select></label>
                   </div>
                 </div>
 
                 <div class="request-section" data-request-section="Solicitud General" hidden>
-                  <div class="form-section-heading"><h3>Solicitud general</h3></div>
+                  <div class="form-section-heading"><h3>Solicitud General</h3></div>
                   <div class="form-grid two-col">
-                    <label class="field field-span-2"><span>Tipo de solicitud <em>*</em></span><select id="generalRequestType" name="generalRequestType" data-required><option value="">Seleccionar</option><option value="Reprocesamiento de puntos">Reprocesamiento de puntos</option><option value="Redireccionar envío de datos">Redireccionar envío de datos</option><option value="Otra">Otra</option></select></label>
-                    <label class="field" data-general-redirection-only hidden><span>Empresa <em>*</em></span><input name="redirectionCompany" data-required-if-visible placeholder="Empresa involucrada"></label>
-                    <label class="field field-span-2" data-general-other-only hidden><span>Describa la solicitud <em>*</em></span><textarea name="generalDescription" rows="4" data-required-if-visible placeholder="Describir la solicitud"></textarea></label>
+                    <label class="field field-span-2"><span>Tipo De Solicitud <em>*</em></span><select id="generalRequestType" name="generalRequestType" data-required><option value="">Seleccionar</option><option value="Reprocesamiento de puntos">Reprocesamiento De Puntos</option><option value="Redireccionar envío de datos">Redireccionar Envío De Datos</option><option value="Otra">Otra</option></select></label>
+                    <label class="field" data-general-redirection-only hidden><span>Empresa <em>*</em></span><input name="redirectionCompany" data-required-if-visible placeholder="Empresa Involucrada"></label>
+                    <label class="field field-span-2" data-general-other-only hidden><span>Describa La Solicitud <em>*</em></span><textarea name="generalDescription" rows="4" data-required-if-visible placeholder="Describir La Solicitud"></textarea></label>
                   </div>
                 </div>
                 </section>
@@ -211,7 +212,7 @@
                   <div class="form-card-heading"><div class="step-badge">02</div><div><h2>Priorización</h2></div></div>
                   <label class="field"><span>Prioridad</span><select name="priority"><option value="Media">Media</option><option value="Alta">Alta</option><option value="Baja">Baja</option></select></label>
                 </div>
-                <div class="form-actions"><button id="wizardBack" class="button button-secondary" type="button">← Atrás</button><button id="wizardNext" class="button button-primary" type="button">Continuar <span>→</span></button><button id="wizardSubmit" class="button button-primary hidden" type="submit">Registrar requerimiento <span>→</span></button></div>
+                <div class="form-actions"><button id="wizardBack" class="button button-secondary" type="button">← Atrás</button><button id="wizardNext" class="button button-primary" type="button">Continuar <span>→</span></button><button id="wizardSubmit" class="button button-primary hidden" type="submit">Registrar Requerimiento <span>→</span></button></div>
               </aside>
             </form>
           </section>
@@ -223,6 +224,6 @@
       </div>
     </div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
-    <script src="app.js?v=20260924-4"></script>
+    <script src="app.js?v=20260924-5"></script>
   </body>
 </html>
