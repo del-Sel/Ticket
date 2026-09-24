@@ -4,8 +4,55 @@ const API_PATH = "/api/tickets";
 const SYSTEM_PASSWORD = "72684";
 const OPERATORS = ["Cristian Sievert", "Santiago del Sel", "Ramiro Urgorri"];
 const REQUESTED_TO = ["Marcos Barlotti"];
-const EXCEL_STATUS = ["Pendiente", "En proceso", "Finalizada"];
-const VERIFICATION_OPTIONS = ["Si", "No"];
+const EXCEL_STATUS = ["Pendiente", "En proceso", "Finalizada"];const VERIFICATION_OPTIONS = ["Si", "No"];const MAX_ATTACHMENT_FILES = 5;
+function attachmentApiUrl() {
+  return ["http:", "https:"].includes(window.location.protocol) ? window.location.origin + "/api/attachments" : null;
+}
+
+function selectedAttachmentFiles() {
+  return [...($("#attachments")?.files || [])];
+}
+
+async function optimizeImage(file) {
+  if (!window.createImageBitmap || !file.type.startsWith("image/")) return file;
+  let bitmap;
+  try {
+    bitmap = await createImageBitmap(file);
+  } catch (error) {
+    return file;
+  }
+  const maxDimension = 1600;
+  const scale = Math.min(1, maxDimension / Math.max(bitmap.width, bitmap.height));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+  canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+  canvas.getContext("2d").drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  bitmap.close?.();
+  const blob = await new Promise(resolve => canvas.toBlob(resolve, "image/jpeg", 0.82));
+  if (!blob) return file;
+  const baseName = String(file.name || "foto").replace(/\.[^/.]+$/, "");
+  return new File([blob], baseName + ".jpg", { type: "image/jpeg" });
+}
+
+async function uploadAttachments(ticketId, files) {
+  const url = attachmentApiUrl();
+  if (!url) throw new Error("Los adjuntos solo se pueden guardar desde la página publicada");
+  const body = new FormData();
+  body.append("ticketId", ticketId);
+  for (const file of files) body.append("files", await optimizeImage(file), file.name);
+  const response = await fetch(url, { method: "POST", body });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(payload.error || "No se pudieron guardar las fotos");
+  return Array.isArray(payload.attachments) ? payload.attachments : [];
+}
+
+function renderAttachmentPreview(files = selectedAttachmentFiles()) {
+  const preview = $("#attachmentPreview");
+  if (!preview) return;
+  preview.innerHTML = files.slice(0, MAX_ATTACHMENT_FILES).map(file => '<span class="attachment-chip">' + escapeHtml(file.name) + '</span>').join("");
+  if (files.length > MAX_ATTACHMENT_FILES) showToast("Podés adjuntar hasta 5 fotos");
+}
+
 
 const STATUS = {
   NEW: "Nuevo",
@@ -437,6 +484,7 @@ function renderDetail(ticket) {
         ${readField("Razón social", ticket.customer)}${readField("Operador", ticket.operator || ticket.createdBy)}${readField("Solicitado a", ticket.requestedTo)}${readField("Descripción", ticket.description || ticket.subject, true)}${ticket.contact ? readField("Contacto", ticket.contact) : ""}
       </div></article>
       ${(ticket.correction || ticket.correctiveAction || ticket.resolution || ticket.observation || ticket.actionTaken) ? `<article class="info-card response-card"><div class="info-card-heading"><h2><span class="systems-icon">↗</span> Corrección de Sistemas</h2></div>${ticket.correction || ticket.correctiveAction || ticket.resolution ? `<div class="field-readonly">${readField("Corrección realizada", ticket.correction || ticket.correctiveAction || ticket.resolution, true)}</div>` : ""}${ticket.observation || ticket.actionTaken ? `<div class="field-readonly">${readField("Observación", ticket.observation || ticket.actionTaken, true)}</div>` : ""}</article>` : ""}
+      ${renderAttachmentDetails(ticket)}
       ${renderRequestDetails(ticket)}
       <article class="info-card timeline-card"><h2>Historial del requerimiento</h2><div class="timeline">${ticket.history.map(item => `<div class="timeline-item ${item.complete ? "complete" : ""}"><span class="timeline-dot"></span><div class="timeline-copy"><strong>${escapeHtml(item.title)}</strong><p>${escapeHtml(item.text)}</p><time>${item.date ? formatDate(item.date, true) : "Pendiente"}</time></div></div>`).join("")}</div></article>
     </div>
@@ -448,7 +496,12 @@ function renderDetail(ticket) {
   $$('[data-action]', $("#detailContent")).forEach(button => button.addEventListener("click", () => handleDetailAction(button.dataset.action, ticket.id)));
 }
 
-function readField(label, value, large = false) { return `<div class="field-readonly"><span class="read-label">${label}</span><div class="read-value ${large ? "large" : ""}">${escapeHtml(value || "—")}</div></div>`; }
+function readField(label, value, large = false) { return `<div class="field-readonly"><span class="read-label">${label}</span><div class="read-value ${large ? "large" : ""}">${escapeHtml(value || "—")}</div></div>`; }function renderAttachmentDetails(ticket) {
+  const attachments = Array.isArray(ticket.attachments) ? ticket.attachments.filter(item => item && item.url) : [];
+  if (!attachments.length) return "";
+  const items = attachments.map(item => '<a class="attachment-card" href="' + escapeHtml(item.url) + '" target="_blank" rel="noopener"><img src="' + escapeHtml(item.url) + '" alt="' + escapeHtml(item.name || "Foto adjunta") + '" loading="lazy" /><span>' + escapeHtml(item.name || "Foto adjunta") + '</span></a>').join("");
+  return '<article class="info-card attachments-card"><div class="info-card-heading"><h2>Adjuntos</h2></div><div class="attachment-grid">' + items + '</div></article>';
+}
 function renderRequestDetails(ticket) {
   const type = ticket.requestType || "";
   if (!type && !ticket.requesterEmail) return "";
@@ -623,11 +676,13 @@ $$("[data-quick-filter]").forEach(button => button.addEventListener("click", () 
 $("#requestType").addEventListener("change", syncRequestForm);
 $("#incidentOrigin").addEventListener("change", syncRequestForm);
 $("#generalRequestType").addEventListener("change", syncRequestForm);
-syncRequestForm();
+syncRequestForm();$("#attachments").addEventListener("change", () => renderAttachmentPreview());
 
-$("#newTicketForm").addEventListener("submit", event => {
+$("#newTicketForm").addEventListener("submit", async event => {
   event.preventDefault();
   const form = new FormData(event.target);
+  const files = selectedAttachmentFiles();
+  if (files.length > MAX_ATTACHMENT_FILES) { showToast("Podés adjuntar hasta 5 fotos"); return; }
   const number = nextTicketNumber();
   const operator = form.get("operator");
   const requestedTo = form.get("requestedTo");
@@ -646,6 +701,7 @@ $("#newTicketForm").addEventListener("submit", event => {
     status: STATUS.ASSIGNED, assignee: requestedTo, createdAt: created, updatedAt: created, correctiveNumber: null, correctiveAction: "", correction: "", observation: "", resolution: "", actionTaken: "", systemsResponsible: "", verification: null, verified: "", closedAt: "",
     history: [{ title: "Requerimiento registrado", text: "Registrado por " + operator + ".", date: created, complete: true }, { title: "Enviado a Sistemas", text: "El requerimiento fue enviado a " + requestedTo + ".", date: created, complete: true }, { title: "Proceso iniciado", text: "Pendiente de inicio.", date: null, complete: false }, { title: "Corrección registrada", text: "Pendiente de registrar la corrección.", date: null, complete: false }, { title: "Verificación de Soporte", text: "Pendiente de verificación.", date: null, complete: false }]
   };
+  ticket.attachments = files.length ? await uploadAttachments(ticket.id, files) : [];
   tickets.push(ticket);
   saveTickets(ticket, "POST");
   event.target.reset();
