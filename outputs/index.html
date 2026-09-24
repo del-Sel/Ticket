@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <meta name="theme-color" content="#b51f2d" />
     <title>Seguimiento de requerimientos a Sistemas | Ful-Mar</title>
-    <link rel="stylesheet" href="styles.css?v=20260924-1" />
+    <link rel="stylesheet" href="styles.css?v=20260924-3" />
   </head>
   <body>
     <div class="app-shell">
@@ -139,6 +139,7 @@
                   <label class="field"><span>Operador <em>*</em></span><select name="operator" required><option value="Cristian Sievert">Cristian Sievert</option><option value="Santiago del Sel">Santiago del Sel</option><option value="Ramiro Urgorri">Ramiro Urgorri</option></select></label>
                   <label class="field"><span>Solicitado a <em>*</em></span><select name="requestedTo" required><option value="Marcos Barlotti">Marcos Barlotti</option></select></label>
                   <label class="field field-span-2"><span>Información adicional</span><textarea name="description" rows="4" placeholder="Antecedentes o información adicional del caso"></textarea></label>
+                  <label class="field field-span-2"><span>Adjuntos / fotos</span><input id="attachments" type="file" name="attachments" accept="image/*" multiple /><small class="field-help">Hasta 5 fotos. Se optimizan antes de guardarse.</small><div id="attachmentPreview" class="attachment-preview" aria-live="polite"></div></label>
                 </div>
 
                 <div class="request-section" data-request-section="Reporte de error" hidden>
@@ -201,6 +202,6 @@
       </div>
     </div>
     <div id="toast" class="toast" role="status" aria-live="polite"></div>
-    <script src="app.js?v=20260924-1"></script>
+    <script src="app.js?v=20260924-3"></script>
   </body>
 </html>
