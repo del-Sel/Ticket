@@ -773,7 +773,7 @@ function openNotificationSettings() {
     event.preventDefault();
     const form = new FormData(event.target);
     const nextEmail = String(form.get("notificationEmail") || "").trim().toLowerCase();
-    if (!/^[^\\s@]+@[^\\s@]+\\.[^\\s@]+$/.test(nextEmail)) { showToast("Ingresá un correo válido"); return; }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(nextEmail)) { showToast("Ingresá un correo válido"); return; }
     try {
       const response = await fetch(window.location.origin + "/api/settings", { method: "PUT", headers: { "Content-Type": "application/json", Accept: "application/json" }, body: JSON.stringify({ notificationEmail: nextEmail }) });
       const payload = await response.json().catch(() => ({}));
