@@ -4,55 +4,9 @@ const API_PATH = "/api/tickets";
 const SYSTEM_PASSWORD = "72684";
 const OPERATORS = ["Cristian Sievert", "Santiago del Sel", "Ramiro Urgorri"];
 const REQUESTED_TO = ["Marcos Barlotti"];
-const EXCEL_STATUS = ["Pendiente", "En proceso", "Finalizada"];const VERIFICATION_OPTIONS = ["Si", "No"];const MAX_ATTACHMENT_FILES = 5;
-function attachmentApiUrl() {
-  return ["http:", "https:"].includes(window.location.protocol) ? window.location.origin + "/api/attachments" : null;
-}
-
-function selectedAttachmentFiles() {
-  return [...($("#attachments")?.files || [])];
-}
-
-async function optimizeImage(file) {
-  if (!window.createImageBitmap || !file.type.startsWith("image/")) return file;
-  let bitmap;
-  try {
-    bitmap = await createImageBitmap(file);
-  } catch (error) {
-    return file;
-  }
-  const maxDimension = 1600;
-  const scale = Math.min(1, maxDimension / Math.max(bitmap.width, bitmap.height));
-  const canvas = document.createElement("canvas");
-  canvas.width = Math.max(1, Math.round(bitmap.width * scale));
-  canvas.height = Math.max(1, Math.round(bitmap.height * scale));
-  canvas.getContext("2d").drawImage(bitmap, 0, 0, canvas.width, canvas.height);
-  bitmap.close?.();
-  const blob = await new Promise(resolve => canvas.toBlob(resolve, "image/jpeg", 0.82));
-  if (!blob) return file;
-  const baseName = String(file.name || "foto").replace(/\.[^/.]+$/, "");
-  return new File([blob], baseName + ".jpg", { type: "image/jpeg" });
-}
-
-async function uploadAttachments(ticketId, files) {
-  const url = attachmentApiUrl();
-  if (!url) throw new Error("Los adjuntos solo se pueden guardar desde la página publicada");
-  const body = new FormData();
-  body.append("ticketId", ticketId);
-  for (const file of files) body.append("files", await optimizeImage(file), file.name);
-  const response = await fetch(url, { method: "POST", body });
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(payload.error || "No se pudieron guardar las fotos");
-  return Array.isArray(payload.attachments) ? payload.attachments : [];
-}
-
-function renderAttachmentPreview(files = selectedAttachmentFiles()) {
-  const preview = $("#attachmentPreview");
-  if (!preview) return;
-  preview.innerHTML = files.slice(0, MAX_ATTACHMENT_FILES).map(file => '<span class="attachment-chip">' + escapeHtml(file.name) + '</span>').join("");
-  if (files.length > MAX_ATTACHMENT_FILES) showToast("Podés adjuntar hasta 5 fotos");
-}
-
+const EXCEL_STATUS = ["Pendiente", "En proceso", "Finalizada"];
+const VERIFICATION_OPTIONS = ["Si", "No"];
+const MAX_ATTACHMENT_FILES = 5;
 
 const STATUS = {
   NEW: "Nuevo",
@@ -212,7 +166,7 @@ let currentQuickFilter = "all";
 let sortKey = "number";
 let sortDirection = "asc";
 let selectedTicketId = null;
-
+let wizardStep = 1;
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
 
@@ -301,12 +255,88 @@ async function saveRemoteTicket(ticket, method = "PUT") {
     showToast("El requerimiento quedó guardado localmente, pero no se pudo sincronizar");
   }
 }
+
+function attachmentApiUrl() {
+  return ["http:", "https:"].includes(window.location.protocol) ? window.location.origin + "/api/attachments" : null;
+}
+
+function selectedAttachmentFiles() {
+  return [...($("#attachments")?.files || [])];
+}
+
+function setAttachmentFiles(files) {
+  const input = $("#attachments");
+  if (!input || typeof DataTransfer === "undefined") return;
+  const transfer = new DataTransfer();
+  files.slice(0, MAX_ATTACHMENT_FILES).forEach(file => transfer.items.add(file));
+  input.files = transfer.files;
+  renderAttachmentPreview([...transfer.files]);
+}
+
+async function optimizeImage(file) {
+  if (!window.createImageBitmap || !file.type.startsWith("image/")) return file;
+  let bitmap;
+  try {
+    bitmap = await createImageBitmap(file);
+  } catch (error) {
+    return file;
+  }
+  const maxDimension = 1600;
+  const scale = Math.min(1, maxDimension / Math.max(bitmap.width, bitmap.height));
+  const canvas = document.createElement("canvas");
+  canvas.width = Math.max(1, Math.round(bitmap.width * scale));
+  canvas.height = Math.max(1, Math.round(bitmap.height * scale));
+  canvas.getContext("2d").drawImage(bitmap, 0, 0, canvas.width, canvas.height);
+  bitmap.close?.();
+  const blob = await new Promise(resolve => canvas.toBlob(resolve, "image/jpeg", 0.82));
+  if (!blob) return file;
+  const baseName = String(file.name || "foto").replace(/\.[^/.]+$/, "");
+  return new File([blob], baseName + ".jpg", { type: "image/jpeg" });
+}
+
+async function uploadAttachments(ticketId, files) {
+  const url = attachmentApiUrl();
+  if (!url) throw new Error("Los adjuntos solo se pueden guardar desde la página publicada");
+  const body = new FormData();
+  body.append("ticketId", ticketId);
+  for (const file of files) body.append("files", await optimizeImage(file), file.name);
+  const response = await fetch(url, { method: "POST", body });
+  const payload = await response.json().catch(() => ({}));
+  if (!response.ok) throw new Error(payload.error || "No se pudieron guardar las fotos");
+  return Array.isArray(payload.attachments) ? payload.attachments : [];
+}
+
+function renderAttachmentPreview(files = selectedAttachmentFiles()) {
+  const preview = $("#attachmentPreview");
+  if (!preview) return;
+  preview.innerHTML = files.slice(0, MAX_ATTACHMENT_FILES).map(file => {
+    const previewUrl = file.type?.startsWith("image/") ? URL.createObjectURL(file) : "";
+    return `<span class="attachment-chip${previewUrl ? " attachment-chip-image" : ""}">${previewUrl ? `<img src="${previewUrl}" alt="" />` : ""}<span>${escapeHtml(file.name || "Imagen pegada")}</span></span>`;
+  }).join("");
+  if (files.length > MAX_ATTACHMENT_FILES) showToast("Podés adjuntar hasta 5 fotos");
+}
+
+function handlePastedAttachment(event) {
+  const imageItem = [...(event.clipboardData?.items || [])].find(item => item.type.startsWith("image/"));
+  if (!imageItem) return;
+  const image = imageItem.getAsFile();
+  if (!image) return;
+  event.preventDefault();
+  const files = selectedAttachmentFiles();
+  if (files.length >= MAX_ATTACHMENT_FILES) {
+    showToast("Podés adjuntar hasta 5 fotos");
+    return;
+  }
+  const extension = image.type === "image/jpeg" ? "jpg" : image.type.split("/")[1] || "png";
+  const pastedFile = new File([image], `captura-${files.length + 1}.${extension}`, { type: image.type || "image/png" });
+  setAttachmentFiles([...files, pastedFile]);
+  showToast("Captura pegada en adjuntos");
+}
 function nowIso() { return new Date().toISOString(); }
 function todayInput() { return new Date().toISOString().slice(0, 10); }
 function initials(name = "") { return name.split(/\s+/).filter(Boolean).slice(0, 2).map(part => part[0]).join("").toUpperCase() || "--"; }
 function formatDate(value, withTime = false) {
-  if (!value) return "—";
-  const date = new Date(value.includes("T") ? value : `${value}T12:00:00`);
+  if (!value) return "—";  const date = new Date(value.includes("T") ? value : `${value}T12:00:00`);
   const base = new Intl.DateTimeFormat("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" }).format(date);
   if (!withTime) return base;
   return `${base} · ${new Intl.DateTimeFormat("es-AR", { hour: "2-digit", minute: "2-digit" }).format(date)}`;
@@ -348,6 +378,11 @@ function setConditionalRequired(root, enabled) {
   $$("[data-required], [data-required-if-visible]", root).forEach(field => { field.required = enabled; });
 }
 
+function syncRequestChoice() {
+  const selected = $("#requestType")?.value || "";
+  $$('[data-request-choice]').forEach(choice => choice.classList.toggle("is-selected", choice.dataset.requestChoice === selected));
+}
+
 function syncRequestForm() {
   const requestType = $("#requestType")?.value || "";
   const incidentOrigin = $("#incidentOrigin")?.value || "";
@@ -355,28 +390,71 @@ function syncRequestForm() {
   $$('[data-request-section]').forEach(section => {
     const visible = section.dataset.requestSection === requestType;
     section.hidden = !visible;
-    setConditionalRequired(section, visible);
+    setConditionalRequired(section, visible && wizardStep === 2);
   });
 
   const systemDetails = $("[data-error-system-only]");
   const showSystemDetails = requestType === "Reporte de error" && incidentOrigin === "Sistema";
   if (systemDetails) {
     systemDetails.hidden = !showSystemDetails;
-    setConditionalRequired(systemDetails, showSystemDetails);
+    setConditionalRequired(systemDetails, showSystemDetails && wizardStep === 2);
   }
+
+  const equipmentDetails = $("[data-error-equipment-only]");
+  if (equipmentDetails) equipmentDetails.hidden = !(requestType === "Reporte de error" && incidentOrigin === "Equipo");
 
   const redirectionDetails = $("[data-general-redirection-only]");
   const showRedirection = requestType === "Solicitud General" && generalRequestType === "Redireccionar envío de datos";
   if (redirectionDetails) {
     redirectionDetails.hidden = !showRedirection;
-    setConditionalRequired(redirectionDetails, showRedirection);
+    setConditionalRequired(redirectionDetails, showRedirection && wizardStep === 2);
   }
 
   const otherDetails = $("[data-general-other-only]");
   const showOther = requestType === "Solicitud General" && generalRequestType === "Otra";
   if (otherDetails) {
     otherDetails.hidden = !showOther;
-    setConditionalRequired(otherDetails, showOther);
+    setConditionalRequired(otherDetails, showOther && wizardStep === 2);
+  }
+  syncRequestChoice();
+}
+
+function validateWizardStep(step) {
+  if (step === 1) {
+    if (!$("#requestType")?.value) {
+      showToast("Seleccioná el tipo de solicitud para continuar");
+      $("#requestType")?.focus();
+      return false;
+    }
+    return true;
+  }
+  const stepRoot = $('[data-wizard-step="2"]');
+  if (!stepRoot) return true;
+  const invalid = [...stepRoot.querySelectorAll("input, select, textarea")].find(field => field.required && !field.checkValidity());
+  if (invalid) {
+    invalid.reportValidity();
+    return false;
+  }
+  return true;
+}
+
+function setWizardStep(step) {
+  wizardStep = Math.max(1, Math.min(2, step));
+  $$('[data-wizard-step]').forEach(section => section.classList.toggle("hidden", Number(section.dataset.wizardStep) !== wizardStep));
+  $$('[data-wizard-indicator]').forEach(indicator => {
+    const indicatorStep = Number(indicator.dataset.wizardIndicator);
+    indicator.classList.toggle("is-active", indicatorStep === wizardStep);
+    indicator.classList.toggle("is-complete", indicatorStep < wizardStep);
+  });
+  $(".wizard-side")?.classList.toggle("hidden", wizardStep === 1);
+  $("#wizardNext")?.classList.toggle("hidden", wizardStep !== 1);
+  $("#wizardSubmit")?.classList.toggle("hidden", wizardStep !== 2);
+  const back = $("#wizardBack");
+  if (back) back.textContent = wizardStep === 1 ? "Cancelar" : "← Atrás";
+  syncRequestForm();
+  if (wizardStep === 2) {
+    const dateField = $("[name=requestDate]");
+    if (dateField && !dateField.value) dateField.value = todayInput();
   }
 }
 
@@ -427,6 +505,26 @@ function updateSortIndicators() {
   });
 }
 
+function renderSystemsBoard(visible) {  const board = $("#systemsBoard");
+  if (!board) return;
+  const showBoard = activeRole === "sistemas";
+  board.classList.toggle("hidden", !showBoard);
+  if (!showBoard) {
+    board.innerHTML = "";
+    return;
+  }
+  const columns = [
+    { status: "Pendiente", label: "Pendientes", hint: "Esperando que Sistemas tome el requerimiento", className: "board-pending" },
+    { status: "En proceso", label: "En proceso", hint: "Requerimientos que ya están siendo trabajados", className: "board-progress" },
+    { status: "Finalizada", label: "Finalizadas", hint: "Listas para verificación o ya verificadas", className: "board-finished" }
+  ];
+  board.innerHTML = `<div class="systems-board-heading"><div><span class="eyebrow">Vista operativa</span><h2>Trabajo de Sistemas</h2><p>Seleccioná un requerimiento para ver toda la información y actualizar su estado.</p></div><span class="systems-board-count">${visible.length} visibles</span></div><div class="systems-board-columns">${columns.map(column => {
+    const items = visible.filter(ticket => operationalStatus(ticket) === column.status);
+    return `<section class="systems-board-column ${column.className}"><div class="systems-board-column-heading"><div><h3>${column.label}</h3><span>${column.hint}</span></div><strong>${items.length}</strong></div><div class="systems-board-list">${items.length ? items.map(ticket => `<button type="button" class="systems-board-card" data-board-ticket="${escapeHtml(ticket.id)}"><span class="board-card-top"><strong>${recordLabel(ticket)}</strong>${statusBadge(column.status)}</span><span class="board-card-subject">${escapeHtml(ticket.subject || "Sin título")}</span><span class="board-card-meta">${escapeHtml(ticket.customer || "Sin empresa")} · ${escapeHtml(ticket.priority || "Sin prioridad")}</span><span class="board-card-date">${column.status === "Finalizada" && ticket.verified === "Si" ? "Verificada" : column.status === "Finalizada" ? "Pendiente de verificación" : formatDate(ticket.createdAt)}</span></button>`).join("") : `<div class="systems-board-empty">No hay requerimientos</div>`}</div></section>`;
+  }).join("")}</div>`;
+  $$('[data-board-ticket]', board).forEach(card => card.addEventListener("click", () => openTicket(card.dataset.boardTicket)));
+}
+
 function renderDashboard() {
   refreshFilterOptions();
   const query = $("#searchInput").value.trim().toLowerCase();
@@ -450,6 +548,7 @@ function renderDashboard() {
     return matchesQuery && matchesStatus && matchesPriority && matchesOperator && matchesRequestedTo && matchesVerification;
   }).sort(compareTickets);
   $("#resultCount").textContent = `${visible.length} ${visible.length === 1 ? "requerimiento" : "requerimientos"}`;
+  renderSystemsBoard(visible);
   $("#ticketTableBody").innerHTML = visible.map(ticket => `<tr class="ticket-row ${rowStatusClass(ticket)}" data-open-ticket="${ticket.id}">
     <td><span class="ticket-id">${recordLabel(ticket)}</span></td>
     <td><span class="updated">${formatDate(ticket.createdAt)}</span></td>
@@ -496,18 +595,19 @@ function renderDetail(ticket) {
   $$('[data-action]', $("#detailContent")).forEach(button => button.addEventListener("click", () => handleDetailAction(button.dataset.action, ticket.id)));
 }
 
-function readField(label, value, large = false) { return `<div class="field-readonly"><span class="read-label">${label}</span><div class="read-value ${large ? "large" : ""}">${escapeHtml(value || "—")}</div></div>`; }function renderAttachmentDetails(ticket) {
+function readField(label, value, large = false) { return `<div class="field-readonly"><span class="read-label">${label}</span><div class="read-value ${large ? "large" : ""}">${escapeHtml(value || "—")}</div></div>`; }
+function renderAttachmentDetails(ticket) {
   const attachments = Array.isArray(ticket.attachments) ? ticket.attachments.filter(item => item && item.url) : [];
   if (!attachments.length) return "";
-  const items = attachments.map(item => '<a class="attachment-card" href="' + escapeHtml(item.url) + '" target="_blank" rel="noopener"><img src="' + escapeHtml(item.url) + '" alt="' + escapeHtml(item.name || "Foto adjunta") + '" loading="lazy" /><span>' + escapeHtml(item.name || "Foto adjunta") + '</span></a>').join("");
-  return '<article class="info-card attachments-card"><div class="info-card-heading"><h2>Adjuntos</h2></div><div class="attachment-grid">' + items + '</div></article>';
+  const items = attachments.map(item => "<a class=\"attachment-card\" href=\"" + escapeHtml(item.url) + "\" target=\"_blank\" rel=\"noopener\"><img src=\"" + escapeHtml(item.url) + "\" alt=\"" + escapeHtml(item.name || "Foto adjunta") + "\" loading=\"lazy\" /><span>" + escapeHtml(item.name || "Foto adjunta") + "</span></a>").join("");
+  return "<article class=\"info-card attachments-card\"><div class=\"info-card-heading\"><h2>Adjuntos</h2></div><div class=\"attachment-grid\">" + items + "</div></article>";
 }
+
 function renderRequestDetails(ticket) {
   const type = ticket.requestType || "";
   if (!type) return "";
   const fields = [
-    ["Tipo de solicitud", type],
-    
+    ["Tipo de solicitud", type]
   ];
   if (type === "Reporte de error") {
     fields.push(
@@ -554,7 +654,7 @@ function showView(view) {
   $$('[data-view]').forEach(section => section.classList.toggle("hidden", section.dataset.view !== target));
   $$('[data-view-link]').forEach(link => link.classList.toggle("is-active", link.dataset.viewLink === target));
   if (target === "dashboard") renderDashboard();
-  if (target === "new") { const dateField = $("[name=requestDate]"); if (dateField && !dateField.value) dateField.value = todayInput(); }
+  if (target === "new") { setWizardStep(1); }
   if (target === "detail" && selectedTicketId) { const ticket = ticketById(selectedTicketId); if (ticket) renderDetail(ticket); }
   window.scrollTo({ top: 0, behavior: "smooth" });
 }
@@ -574,8 +674,7 @@ function handleDetailAction(action, id) {
   if (action === "edit") { openEditModal(ticket); return; }
   if (action === "take") { ticket.status = STATUS.ANALYSIS; ticket.assignee = ticket.requestedTo || ticket.assignee || "Sistemas"; ticket.updatedAt = nowIso(); addHistory(ticket, "Proceso iniciado", "Requerimiento en proceso."); saveTickets(ticket); renderDetail(ticket); showToast("Proceso iniciado"); return; }
   if (action === "resolve") { openResolutionModal(ticket); return; }
-  if (action === "verify") { openVerificationModal(ticket); return; }
-}
+  if (action === "verify") { openVerificationModal(ticket); return; }}
 
 function openEditModal(ticket) {
   const currentStatus = operationalStatus(ticket);
@@ -650,7 +749,7 @@ function openSystemsAccess() {
 }
 
 $("#roleSelect").value = activeRole;
-$("#roleSelect").addEventListener("change", event => { const nextRole = event.target.value; if (nextRole === "sistemas" && !systemUnlocked) { event.target.value = activeRole; openSystemsAccess(); return; } activeRole = nextRole; if (activeRole !== "sistemas") systemUnlocked = false; localStorage.setItem(ROLE_KEY, activeRole); if (selectedTicketId && location.hash.startsWith("#ticket/")) renderDetail(ticketById(selectedTicketId)); showToast(activeRole === "sistemas" ? "Perfil Sistemas activo" : "Perfil Soporte activo"); });
+$("#roleSelect").addEventListener("change", event => { const nextRole = event.target.value; if (nextRole === "sistemas" && !systemUnlocked) { event.target.value = activeRole; openSystemsAccess(); return; } activeRole = nextRole; if (activeRole !== "sistemas") systemUnlocked = false; localStorage.setItem(ROLE_KEY, activeRole); if (selectedTicketId && location.hash.startsWith("#ticket/")) renderDetail(ticketById(selectedTicketId)); else renderDashboard(); showToast(activeRole === "sistemas" ? "Perfil Sistemas activo" : "Perfil Soporte activo"); });
 $("#searchInput").addEventListener("input", renderDashboard);
 $("#sortFilter").addEventListener("change", event => {
   const match = event.target.value.match(/^(.*)-(asc|desc)$/);
@@ -674,15 +773,32 @@ $$('[data-sort-key]').forEach(button => button.addEventListener("click", () => {
 }));
 $$("[data-quick-filter]").forEach(button => button.addEventListener("click", () => { currentQuickFilter = button.dataset.quickFilter; $("#statusFilter").value = "all"; renderDashboard(); }));
 $("#requestType").addEventListener("change", syncRequestForm);
+$$('[data-request-choice]').forEach(choice => choice.addEventListener("click", () => {
+  $("#requestType").value = choice.dataset.requestChoice;
+  syncRequestForm();
+}));
 $("#incidentOrigin").addEventListener("change", syncRequestForm);
 $("#generalRequestType").addEventListener("change", syncRequestForm);
-syncRequestForm();$("#attachments").addEventListener("change", () => renderAttachmentPreview());
+$("#wizardBack").addEventListener("click", () => {
+  if (wizardStep === 1) { location.hash = "dashboard"; return; }
+  setWizardStep(wizardStep - 1);
+});
+$("#wizardNext").addEventListener("click", () => {
+  if (validateWizardStep(wizardStep)) setWizardStep(wizardStep + 1);
+});
+syncRequestForm();
+
+$("#attachments").addEventListener("change", () => renderAttachmentPreview());
+document.addEventListener("paste", handlePastedAttachment);
 
 $("#newTicketForm").addEventListener("submit", async event => {
   event.preventDefault();
   const form = new FormData(event.target);
   const files = selectedAttachmentFiles();
-  if (files.length > MAX_ATTACHMENT_FILES) { showToast("Podés adjuntar hasta 5 fotos"); return; }
+  if (files.length > MAX_ATTACHMENT_FILES) {
+    showToast("Podés adjuntar hasta 5 fotos");
+    return;
+  }
   const number = nextTicketNumber();
   const operator = form.get("operator");
   const requestedTo = form.get("requestedTo");
@@ -701,13 +817,24 @@ $("#newTicketForm").addEventListener("submit", async event => {
     status: STATUS.ASSIGNED, assignee: requestedTo, createdAt: created, updatedAt: created, correctiveNumber: null, correctiveAction: "", correction: "", observation: "", resolution: "", actionTaken: "", systemsResponsible: "", verification: null, verified: "", closedAt: "",
     history: [{ title: "Requerimiento registrado", text: "Registrado por " + operator + ".", date: created, complete: true }, { title: "Enviado a Sistemas", text: "El requerimiento fue enviado a " + requestedTo + ".", date: created, complete: true }, { title: "Proceso iniciado", text: "Pendiente de inicio.", date: null, complete: false }, { title: "Corrección registrada", text: "Pendiente de registrar la corrección.", date: null, complete: false }, { title: "Verificación de Soporte", text: "Pendiente de verificación.", date: null, complete: false }]
   };
-  ticket.attachments = files.length ? await uploadAttachments(ticket.id, files) : [];
-  tickets.push(ticket);
-  saveTickets(ticket, "POST");
-  event.target.reset();
-  syncRequestForm();
-  showToast(recordLabel(ticket) + " creado correctamente");
-  openTicket(ticket.id);
+  const submitButton = event.target.querySelector('button[type="submit"]');
+  submitButton.disabled = true;
+  try {
+    if (files.length && !apiAvailable) throw new Error("No se pudo conectar con el almacenamiento de fotos");
+    ticket.attachments = files.length ? await uploadAttachments(ticket.id, files) : [];
+    tickets.push(ticket);
+    saveTickets(ticket, "POST");
+    event.target.reset();
+    renderAttachmentPreview([]);
+    setWizardStep(1);
+    syncRequestForm();
+    showToast(recordLabel(ticket) + " creado correctamente");
+    openTicket(ticket.id);
+  } catch (error) {
+    showToast(error.message || "No se pudieron guardar las fotos");
+  } finally {
+    submitButton.disabled = false;
+  }
 });
 
 function routeFromHash() { const hash = location.hash.replace(/^#/, "") || "dashboard"; if (hash.startsWith("ticket/")) { selectedTicketId = hash.split("/")[1]; if (ticketById(selectedTicketId)) { renderDashboard(); showView("detail"); } else { location.hash = "dashboard"; showView("dashboard"); } } else if (hash === "new") showView("new"); else showView("dashboard"); }
