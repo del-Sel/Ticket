@@ -296,6 +296,43 @@ function optionMarkup(options, selected, blankLabel = "") {
   return `${blank}${options.map(option => `<option value="${escapeHtml(option)}" ${option === selected ? "selected" : ""}>${escapeHtml(option)}</option>`).join("")}`;
 }
 
+function setConditionalRequired(root, enabled) {
+  if (!root) return;
+  $$("[data-required], [data-required-if-visible]", root).forEach(field => { field.required = enabled; });
+}
+
+function syncRequestForm() {
+  const requestType = $("#requestType")?.value || "";
+  const incidentOrigin = $("#incidentOrigin")?.value || "";
+  const generalRequestType = $("#generalRequestType")?.value || "";
+  $$('[data-request-section]').forEach(section => {
+    const visible = section.dataset.requestSection === requestType;
+    section.hidden = !visible;
+    setConditionalRequired(section, visible);
+  });
+
+  const systemDetails = $("[data-error-system-only]");
+  const showSystemDetails = requestType === "Reporte de error" && incidentOrigin === "Sistema";
+  if (systemDetails) {
+    systemDetails.hidden = !showSystemDetails;
+    setConditionalRequired(systemDetails, showSystemDetails);
+  }
+
+  const redirectionDetails = $("[data-general-redirection-only]");
+  const showRedirection = requestType === "Solicitud General" && generalRequestType === "Redireccionar envío de datos";
+  if (redirectionDetails) {
+    redirectionDetails.hidden = !showRedirection;
+    setConditionalRequired(redirectionDetails, showRedirection);
+  }
+
+  const otherDetails = $("[data-general-other-only]");
+  const showOther = requestType === "Solicitud General" && generalRequestType === "Otra";
+  if (otherDetails) {
+    otherDetails.hidden = !showOther;
+    setConditionalRequired(otherDetails, showOther);
+  }
+}
+
 function refreshFilterOptions() {
   const fill = (id, allLabel, values) => {
     const select = $(id);
@@ -400,6 +437,7 @@ function renderDetail(ticket) {
         ${readField("Razón social", ticket.customer)}${readField("Operador", ticket.operator || ticket.createdBy)}${readField("Solicitado a", ticket.requestedTo)}${readField("Descripción", ticket.description || ticket.subject, true)}${ticket.contact ? readField("Contacto", ticket.contact) : ""}
       </div></article>
       ${(ticket.correction || ticket.correctiveAction || ticket.resolution || ticket.observation || ticket.actionTaken) ? `<article class="info-card response-card"><div class="info-card-heading"><h2><span class="systems-icon">↗</span> Corrección de Sistemas</h2></div>${ticket.correction || ticket.correctiveAction || ticket.resolution ? `<div class="field-readonly">${readField("Corrección realizada", ticket.correction || ticket.correctiveAction || ticket.resolution, true)}</div>` : ""}${ticket.observation || ticket.actionTaken ? `<div class="field-readonly">${readField("Observación", ticket.observation || ticket.actionTaken, true)}</div>` : ""}</article>` : ""}
+      ${renderRequestDetails(ticket)}
       <article class="info-card timeline-card"><h2>Historial del requerimiento</h2><div class="timeline">${ticket.history.map(item => `<div class="timeline-item ${item.complete ? "complete" : ""}"><span class="timeline-dot"></span><div class="timeline-copy"><strong>${escapeHtml(item.title)}</strong><p>${escapeHtml(item.text)}</p><time>${item.date ? formatDate(item.date, true) : "Pendiente"}</time></div></div>`).join("")}</div></article>
     </div>
     <aside class="side-stack">
@@ -411,6 +449,51 @@ function renderDetail(ticket) {
 }
 
 function readField(label, value, large = false) { return `<div class="field-readonly"><span class="read-label">${label}</span><div class="read-value ${large ? "large" : ""}">${escapeHtml(value || "—")}</div></div>`; }
+function renderRequestDetails(ticket) {
+  const type = ticket.requestType || "";
+  if (!type && !ticket.requesterEmail) return "";
+  const fields = [
+    ["Tipo de solicitud", type],
+    ["Correo electrónico", ticket.requesterEmail]
+  ];
+  if (type === "Reporte de error") {
+    fields.push(
+      ["Origen del error", ticket.incidentOrigin],
+      ["Empresas afectadas y cantidad", ticket.affectedCompanies, true],
+      ["Equipos afectados", ticket.affectedEquipmentCount],
+      ["Días del inconveniente", ticket.incidentDays],
+      ["Tipo de equipo", ticket.equipmentType],
+      ["ID legajo", ticket.legajoId],
+      ["ID unidad", ticket.unitId],
+      ["Puntos enviados por el equipo", ticket.equipmentPoints, true],
+      ["URL del módulo", ticket.moduleUrl],
+      ["Observaciones", ticket.observations, true],
+      ["Captura o enlace de referencia", ticket.captureReference]
+    );
+  }
+  if (type === "Pedido de mejora") {
+    fields.push(
+      ["Tipo de mejora", ticket.improvementType],
+      ["Modificación del equipo", ticket.equipmentModification],
+      ["Alcance", ticket.scope],
+      ["URL del módulo", ticket.improvementModuleUrl],
+      ["Descripción de la mejora", ticket.improvementDescription, true],
+      ["Captura o enlace de referencia", ticket.improvementCapture],
+      ["Nivel de urgencia", ticket.urgency]
+    );
+  }
+  if (type === "Solicitud General") {
+    fields.push(
+      ["Tipo de solicitud general", ticket.generalRequestType],
+      ["Empresa", ticket.redirectionCompany],
+      ["Descripción de la solicitud", ticket.generalDescription, true]
+    );
+  }
+  const visibleFields = fields.filter(([, value]) => value !== undefined && value !== null && String(value).trim() !== "");
+  if (!visibleFields.length) return "";
+  return "<article class=\"info-card request-details-card\"><div class=\"info-card-heading\"><h2>Información de la solicitud</h2></div><div class=\"read-grid\">" + visibleFields.map(([label, value, large]) => readField(label, value, large)).join("") + "</div></article>";
+}
+
 function escapeHtml(value) { return String(value ?? "").replace(/[&<>'"]/g, char => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", "'": "&#39;", '"': "&quot;" }[char])); }
 
 function showView(view) {
@@ -537,6 +620,11 @@ $$('[data-sort-key]').forEach(button => button.addEventListener("click", () => {
   renderDashboard();
 }));
 $$("[data-quick-filter]").forEach(button => button.addEventListener("click", () => { currentQuickFilter = button.dataset.quickFilter; $("#statusFilter").value = "all"; renderDashboard(); }));
+$("#requestType").addEventListener("change", syncRequestForm);
+$("#incidentOrigin").addEventListener("change", syncRequestForm);
+$("#generalRequestType").addEventListener("change", syncRequestForm);
+syncRequestForm();
+
 $("#newTicketForm").addEventListener("submit", event => {
   event.preventDefault();
   const form = new FormData(event.target);
@@ -545,10 +633,23 @@ $("#newTicketForm").addEventListener("submit", event => {
   const requestedTo = form.get("requestedTo");
   const requestDate = form.get("requestDate") || todayInput();
   const created = String(requestDate) + "T12:00:00";
-  const ticket = { id: "RS-" + String(number).padStart(4, "0"), number, customer: form.get("customer"), contact: "", subject: form.get("subject"), typology: "Reclamo de cliente", sourceSector: "Atención al Cliente", operator, createdBy: operator, requestedTo, priority: form.get("priority"), targetDate: "", description: form.get("description") || form.get("subject"), immediateAction: "", status: STATUS.ASSIGNED, assignee: requestedTo, createdAt: created, updatedAt: created, correctiveNumber: null, correctiveAction: "", correction: "", observation: "", resolution: "", actionTaken: "", systemsResponsible: "", verification: null, verified: "", closedAt: "", history: [{ title: "Requerimiento registrado", text: "Registrado por " + operator + ".", date: created, complete: true }, { title: "Enviado a Sistemas", text: "El requerimiento fue enviado a " + requestedTo + ".", date: created, complete: true }, { title: "Proceso iniciado", text: "Pendiente de inicio.", date: null, complete: false }, { title: "Corrección registrada", text: "Pendiente de registrar la corrección.", date: null, complete: false }, { title: "Verificación de Soporte", text: "Pendiente de verificación.", date: null, complete: false }] };
+  const requestType = form.get("requestType");
+  const description = form.get("description") || form.get("improvementDescription") || form.get("generalDescription") || form.get("observations") || form.get("subject");
+  const ticket = {
+    id: "RS-" + String(number).padStart(4, "0"), number,
+    customer: form.get("customer"), contact: "", requesterEmail: form.get("requesterEmail"), subject: form.get("subject"),
+    typology: requestType, requestType, sourceSector: "Soporte", operator, createdBy: operator, requestedTo,
+    priority: form.get("priority"), targetDate: "", description, immediateAction: "",
+    incidentOrigin: form.get("incidentOrigin"), affectedCompanies: form.get("affectedCompanies"), affectedEquipmentCount: form.get("affectedEquipmentCount"), incidentDays: form.get("incidentDays"), equipmentType: form.get("equipmentType"), legajoId: form.get("legajoId"), unitId: form.get("unitId"), equipmentPoints: form.get("equipmentPoints"), moduleUrl: form.get("moduleUrl"), observations: form.get("observations"), captureReference: form.get("captureReference"),
+    improvementType: form.get("improvementType"), equipmentModification: form.get("equipmentModification"), scope: form.get("scope"), improvementModuleUrl: form.get("improvementModuleUrl"), improvementDescription: form.get("improvementDescription"), improvementCapture: form.get("improvementCapture"), urgency: form.get("urgency"),
+    generalRequestType: form.get("generalRequestType"), redirectionCompany: form.get("redirectionCompany"), generalDescription: form.get("generalDescription"),
+    status: STATUS.ASSIGNED, assignee: requestedTo, createdAt: created, updatedAt: created, correctiveNumber: null, correctiveAction: "", correction: "", observation: "", resolution: "", actionTaken: "", systemsResponsible: "", verification: null, verified: "", closedAt: "",
+    history: [{ title: "Requerimiento registrado", text: "Registrado por " + operator + ".", date: created, complete: true }, { title: "Enviado a Sistemas", text: "El requerimiento fue enviado a " + requestedTo + ".", date: created, complete: true }, { title: "Proceso iniciado", text: "Pendiente de inicio.", date: null, complete: false }, { title: "Corrección registrada", text: "Pendiente de registrar la corrección.", date: null, complete: false }, { title: "Verificación de Soporte", text: "Pendiente de verificación.", date: null, complete: false }]
+  };
   tickets.push(ticket);
   saveTickets(ticket, "POST");
   event.target.reset();
+  syncRequestForm();
   showToast(recordLabel(ticket) + " creado correctamente");
   openTicket(ticket.id);
 });
