@@ -51,7 +51,7 @@ async function sendTicketNotification(env, ticket) {
     "Prioridad: " + (ticket.priority || "—"),
     "",
     ticket.description || ""
-  ].join("\\n");
+  ].join("\n");
   const html = "<h2>" + escapeHtml(subject) + "</h2><p><strong>Fecha:</strong> " + escapeHtml(ticket.createdAt || "—") + "</p><p><strong>Razón Social:</strong> " + escapeHtml(ticket.customer || "—") + "</p><p><strong>Requerimiento:</strong> " + escapeHtml(ticket.subject || "—") + "</p><p><strong>Operador:</strong> " + escapeHtml(ticket.operator || ticket.createdBy || "—") + "</p><p><strong>Solicitado A:</strong> " + escapeHtml(ticket.requestedTo || "—") + "</p><p><strong>Prioridad:</strong> " + escapeHtml(ticket.priority || "—") + "</p><hr /><p>" + escapeHtml(ticket.description || "") + "</p>";
   const result = await env.EMAIL.send({ from, to: recipient, subject, text, html });
   return { sent: true, configured: true, recipient, messageId: result?.messageId || "" };
