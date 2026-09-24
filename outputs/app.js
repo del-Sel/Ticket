@@ -692,7 +692,7 @@ $("#newTicketForm").addEventListener("submit", async event => {
   const description = form.get("description") || form.get("improvementDescription") || form.get("generalDescription") || form.get("observations") || form.get("subject");
   const ticket = {
     id: "RS-" + String(number).padStart(4, "0"), number,
-    customer: form.get("customer"), contact: "", requesterEmail: form.get("requesterEmail"), subject: form.get("subject"),
+    customer: form.get("customer"), contact: "", subject: form.get("subject"),
     typology: requestType, requestType, sourceSector: "Soporte", operator, createdBy: operator, requestedTo,
     priority: form.get("priority"), targetDate: "", description, immediateAction: "",
     incidentOrigin: form.get("incidentOrigin"), affectedCompanies: form.get("affectedCompanies"), affectedEquipmentCount: form.get("affectedEquipmentCount"), incidentDays: form.get("incidentDays"), equipmentType: form.get("equipmentType"), legajoId: form.get("legajoId"), unitId: form.get("unitId"), equipmentPoints: form.get("equipmentPoints"), moduleUrl: form.get("moduleUrl"), observations: form.get("observations"), captureReference: form.get("captureReference"),
