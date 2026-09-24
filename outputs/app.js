@@ -446,7 +446,7 @@ function setWizardStep(step) {
     indicator.classList.toggle("is-active", indicatorStep === wizardStep);
     indicator.classList.toggle("is-complete", indicatorStep < wizardStep);
   });
-  $(".wizard-side")?.classList.toggle("hidden", wizardStep === 1);
+  $(".wizard-side")?.classList.remove("hidden");
   $("#wizardNext")?.classList.toggle("hidden", wizardStep !== 1);
   $("#wizardSubmit")?.classList.toggle("hidden", wizardStep !== 2);
   const back = $("#wizardBack");
