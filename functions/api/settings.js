@@ -27,7 +27,7 @@ export async function onRequestGet({ env }) {
     "SELECT value FROM app_settings WHERE key = ?"
   ).bind("notification_email").first();
   const notificationEmail = validEmail(row?.value) ? row.value : DEFAULT_NOTIFICATION_EMAIL;
-  return json({ notificationEmail, configured: Boolean(env.RESEND_API_KEY) });
+  return json({ notificationEmail, configured: Boolean(env.PROCESS_MAILER && env.REPORT_MAIL_TOKEN) });
 }
 
 export async function onRequestPut({ request, env }) {
@@ -39,5 +39,5 @@ export async function onRequestPut({ request, env }) {
   await env.DB.prepare(
     "UPDATE app_settings SET value = ?, updated_at = ? WHERE key = ?"
   ).bind(notificationEmail, new Date().toISOString(), "notification_email").run();
-  return json({ notificationEmail, configured: Boolean(env.RESEND_API_KEY) });
+  return json({ notificationEmail, configured: Boolean(env.PROCESS_MAILER && env.REPORT_MAIL_TOKEN) });
 }
