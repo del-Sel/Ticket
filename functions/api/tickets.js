@@ -72,19 +72,19 @@ async function sendTicketNotification(env, ticket) {
   const mailer = env.PROCESS_MAILER;
   const mailToken = env.REPORT_MAIL_TOKEN;
   if (!mailer || !mailToken) return { sent: false, configured: false, recipients: recipientEmails };
-  const subject = "Nuevo Requerimiento " + ticket.id + " - " + (ticket.customer || "Sin Razón Social");
+  const subject = `Nuevo Requerimiento ${ticket.id} - ${ticket.customer || "Sin Razón Social"}`;
   const text = [
     subject,
-    "Fecha: " + (ticket.createdAt || "—"),
-    "Razón Social: " + (ticket.customer || "—"),
-    "Requerimiento: " + (ticket.subject || "—"),
-    "Operador: " + (ticket.operator || ticket.createdBy || "—"),
-    "Solicitado a: " + (ticket.requestedTo || "—"),
-    "Prioridad: " + (ticket.priority || "—"),
+    `Fecha: ${ticket.createdAt || "—"}`,
+    `Razón Social: ${ticket.customer || "—"}`,
+    `Requerimiento: ${ticket.subject || "—"}`,
+    `Operador: ${ticket.operator || ticket.createdBy || "—"}`,
+    `Solicitado a: ${ticket.requestedTo || "—"}`,
+    `Prioridad: ${ticket.priority || "—"}`,
     "",
     ticket.description || ""
   ].join("\n");
-  const html = "<h2>" + escapeHtml(subject) + "</h2><p><strong>Fecha:</strong> " + escapeHtml(ticket.createdAt || "—") + "</p><p><strong>Razón Social:</strong> " + escapeHtml(ticket.customer || "—") + "</p><p><strong>Requerimiento:</strong> " + escapeHtml(ticket.subject || "—") + "</p><p><strong>Operador:</strong> " + escapeHtml(ticket.operator || ticket.createdBy || "—") + "</p><p><strong>Solicitado a:</strong> " + escapeHtml(ticket.requestedTo || "—") + "</p><p><strong>Prioridad:</strong> " + escapeHtml(ticket.priority || "—") + "</p><hr /><p>" + escapeHtml(ticket.description || "") + "</p>";
+  const html = `<h2>${escapeHtml(subject)}</h2><p><strong>Fecha:</strong> ${escapeHtml(ticket.createdAt || "—")}</p><p><strong>Razón Social:</strong> ${escapeHtml(ticket.customer || "—")}</p><p><strong>Requerimiento:</strong> ${escapeHtml(ticket.subject || "—")}</p><p><strong>Operador:</strong> ${escapeHtml(ticket.operator || ticket.createdBy || "—")}</p><p><strong>Solicitado a:</strong> ${escapeHtml(ticket.requestedTo || "—")}</p><p><strong>Prioridad:</strong> ${escapeHtml(ticket.priority || "—")}</p><hr /><p>${escapeHtml(ticket.description || "")}</p>`;
   const response = await mailer.fetch("https://internal/api/report-email", {
     method: "POST",
     headers: {
