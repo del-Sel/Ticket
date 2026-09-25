@@ -3,7 +3,7 @@ const ROLE_KEY = "fulmar-role-v1";
 const API_PATH = "/api/tickets";
 const SYSTEM_PASSWORD = "72684";
 const OPERATORS = ["Cristian Sievert", "Santiago del Sel", "Ramiro Urgorri"];
-const REQUESTED_TO = ["Marcos Barlotti"];
+const REQUESTED_TO = ["Santiago del Sel", "Franco Barrios", "Gastón Paz"];
 const EXCEL_STATUS = ["Pendiente", "En proceso", "Finalizada"];
 const VERIFICATION_OPTIONS = ["Si", "No"];
 const MAX_ATTACHMENT_FILES = 5;
@@ -187,7 +187,7 @@ function loadTickets() {
 
 function normalizeTicket(ticket) {
   const operator = ticket.operator || ticket.createdBy || "";
-  const requestedTo = ticket.requestedTo || (ticket.assignee && !["Sin asignar", "Sistemas"].includes(ticket.assignee) ? ticket.assignee : REQUESTED_TO[0]);
+  const requestedTo = normalizeRequestedTo(ticket.requestedTo || (ticket.assignee && !["Sin asignar", "Sistemas"].includes(ticket.assignee) ? ticket.assignee : REQUESTED_TO[0]));
   const historyTitles = {
     "Ticket creado": "Requerimiento registrado",
     "Derivación a Sistemas": "Enviado a Sistemas",
@@ -209,7 +209,7 @@ function normalizeTicket(ticket) {
       const processStarted = ["Caso tomado por Sistemas", "Revisión iniciada por Sistemas", "Proceso iniciado"].includes(item.title);
       const displayTitle = "Enviado a Sistemas" === historyTitles[item.title] || sentAutomatically ? "Enviado a Sistemas" : historyTitles[item.title] || item.title;
       const conciseText = ["Respuesta de Sistemas", "Corrección registrada"].includes(item.title) ? "Corrección registrada." : item.text;
-      return { ...item, title: displayTitle, text: sentAutomatically ? `El requerimiento fue enviado a ${requestedTo}.` : processStarted ? (item.complete ? "Requerimiento en proceso." : "Pendiente de inicio.") : conciseText, date: sentAutomatically ? item.date || ticket.createdAt : item.date, complete: sentAutomatically ? true : item.complete };
+      return { ...item, title: displayTitle, text: sentAutomatically ? `El requerimiento fue enviado a ${requestedTo.join(", ")}.` : processStarted ? (item.complete ? "Requerimiento en proceso." : "Pendiente de inicio.") : conciseText, date: sentAutomatically ? item.date || ticket.createdAt : item.date, complete: sentAutomatically ? true : item.complete };
     }),
     verified: ticket.verified || (["Acción efectiva", "Si"].includes(ticket.verification?.result) ? "Si" : ["Acción no efectiva", "No"].includes(ticket.verification?.result) ? "No" : ""),
     closedAt: ticket.closedAt || (ticket.status === STATUS.CLOSED ? ticket.updatedAt : "")
@@ -274,9 +274,9 @@ async function loadNotificationSettings() {
     if (!response.ok) return;
     const settings = await response.json();
     if (Array.isArray(settings.notificationRecipients) && settings.notificationRecipients.length) {
-      notificationRecipients = settings.notificationRecipients;
+      notificationRecipients = settings.notificationRecipients; renderRequestedToOptions($("#requestedToOptions"));
     } else if (settings.notificationEmail) {
-      notificationRecipients = [{ name: "Santiago del Sel", email: settings.notificationEmail }];
+      notificationRecipients = [{ name: "Santiago del Sel", email: settings.notificationEmail }]; renderRequestedToOptions($("#requestedToOptions"));
     }
   } catch (error) {
     // Se conserva el correo inicial hasta que la API esté disponible.
@@ -458,7 +458,7 @@ function validateWizardStep(step) {
     return true;
   }
   const stepRoot = $('[data-wizard-step="2"]');
-  if (!stepRoot) return true;
+  if (!stepRoot) return true; if (!stepRoot.querySelectorAll('input[name="requestedTo"]:checked').length) { showToast("Seleccioná al menos una persona en Solicitado a"); return false; }
   const invalid = [...stepRoot.querySelectorAll("input, select, textarea")].find(field => field.required && !field.checkValidity());
   if (invalid) {
     invalid.reportValidity();
@@ -497,7 +497,7 @@ function refreshFilterOptions() {
     select.value = uniqueValues.includes(current) ? current : "all";
   };
   fill("operatorFilter", "Operador: todos", tickets.map(ticket => ticket.operator || ticket.createdBy));
-  fill("requestedToFilter", "Solicitado a: todos", tickets.map(ticket => ticket.requestedTo));
+  fill("requestedToFilter", "Solicitado a: todos", tickets.flatMap(ticket => requestedToNames(ticket)));
 }
 
 function sortValue(ticket, key) {
@@ -506,7 +506,7 @@ function sortValue(ticket, key) {
   if (key === "customer") return ticket.customer || "";
   if (key === "subject") return ticket.subject || "";
   if (key === "operator") return ticket.operator || ticket.createdBy || "";
-  if (key === "requestedTo") return ticket.requestedTo || "";
+  if (key === "requestedTo") return requestedToLabel(ticket);
   if (key === "priority") return ({ Alta: 1, Media: 2, Baja: 3 }[ticket.priority] || 9);
   if (key === "status") return ({ Pendiente: 1, "En proceso": 2, Finalizada: 3 }[operationalStatus(ticket)] || 9);
   if (key === "verified") return ({ "": 1, No: 2, Si: 3 }[ticket.verified || ""] || 1);
@@ -569,11 +569,11 @@ function renderDashboard() {
   $("#progressCount").textContent = totals["En proceso"];
   $("#finishedCount").textContent = totals.Finalizada;
   const visible = tickets.filter(ticket => {
-    const matchesQuery = !query || [recordLabel(ticket), ticket.id, ticket.customer, ticket.subject, ticket.operator, ticket.requestedTo].some(value => String(value || "").toLowerCase().includes(query));
+    const matchesQuery = !query || [recordLabel(ticket), ticket.id, ticket.customer, ticket.subject, ticket.operator, requestedToLabel(ticket)].some(value => String(value || "").toLowerCase().includes(query));
     const matchesStatus = selectedStatus === "all" || operationalStatus(ticket) === selectedStatus;
     const matchesPriority = selectedPriority === "all" || ticket.priority === selectedPriority;
     const matchesOperator = selectedOperator === "all" || (ticket.operator || ticket.createdBy) === selectedOperator;
-    const matchesRequestedTo = selectedRequestedTo === "all" || ticket.requestedTo === selectedRequestedTo;
+    const matchesRequestedTo = selectedRequestedTo === "all" || requestedToNames(ticket).includes(selectedRequestedTo);
     const matchesVerification = selectedVerification === "all" || (selectedVerification === "pending" ? !ticket.verified : ticket.verified === selectedVerification);
     return matchesQuery && matchesStatus && matchesPriority && matchesOperator && matchesRequestedTo && matchesVerification;
   }).sort(compareTickets);
@@ -585,7 +585,7 @@ function renderDashboard() {
     <td><span class="ticket-customer strong-cell">${escapeHtml(ticket.customer)}</span></td>
     <td><div class="ticket-subject">${escapeHtml(ticket.subject)}</div></td>
     <td><span>${escapeHtml(ticket.operator || ticket.createdBy || "—")}</span></td>
-    <td><span>${escapeHtml(ticket.requestedTo || "—")}</span></td>
+    <td><span>${escapeHtml(requestedToLabel(ticket))}</span></td>
     <td><span class="priority ${ticket.priority}">${escapeHtml(ticket.priority || "—")}</span></td>
     <td>${statusBadge(operationalStatus(ticket))}</td>
     <td><span class="updated">${ticket.status === STATUS.CLOSED ? formatDate(ticket.closedAt || ticket.updatedAt) : "—"}</span></td>
@@ -610,7 +610,7 @@ function renderDetail(ticket) {
   <div class="detail-grid">
     <div class="detail-main">
       <article class="info-card"><div class="info-card-heading"><h2>Datos del requerimiento</h2></div><div class="read-grid">
-        ${readField("Razón social", ticket.customer)}${readField("Operador", ticket.operator || ticket.createdBy)}${readField("Solicitado a", ticket.requestedTo)}${readField("Descripción", ticket.description || ticket.subject, true)}${ticket.contact ? readField("Contacto", ticket.contact) : ""}
+        ${readField("Razón social", ticket.customer)}${readField("Operador", ticket.operator || ticket.createdBy)}${readField("Solicitado a", requestedToLabel(ticket))}${readField("Descripción", ticket.description || ticket.subject, true)}${ticket.contact ? readField("Contacto", ticket.contact) : ""}
       </div></article>
       ${(ticket.correction || ticket.correctiveAction || ticket.resolution || ticket.observation || ticket.actionTaken) ? `<article class="info-card response-card"><div class="info-card-heading"><h2><span class="systems-icon">↗</span> Corrección de Sistemas</h2></div>${ticket.correction || ticket.correctiveAction || ticket.resolution ? `<div class="field-readonly">${readField("Corrección realizada", ticket.correction || ticket.correctiveAction || ticket.resolution, true)}</div>` : ""}${ticket.observation || ticket.actionTaken ? `<div class="field-readonly">${readField("Observación", ticket.observation || ticket.actionTaken, true)}</div>` : ""}</article>` : ""}
       ${renderAttachmentDetails(ticket)}
@@ -618,7 +618,7 @@ function renderDetail(ticket) {
       <article class="info-card timeline-card"><h2>Historial del requerimiento</h2><div class="timeline">${ticket.history.map(item => `<div class="timeline-item ${item.complete ? "complete" : ""}"><span class="timeline-dot"></span><div class="timeline-copy"><strong>${escapeHtml(item.title)}</strong><p>${escapeHtml(item.text)}</p><time>${item.date ? formatDate(item.date, true) : "Pendiente"}</time></div></div>`).join("")}</div></article>
     </div>
     <aside class="side-stack">
-      <article class="info-card side-card"><h2>Resumen operativo</h2><div class="assignee"><span class="mini-avatar system">${initials(ticket.requestedTo || ticket.assignee || "Sin asignar")}</span><div><strong>${escapeHtml(ticket.requestedTo || ticket.assignee || "Sin asignar")}</strong><span>Solicitado a</span></div></div><div class="sidebar-divider"></div><div class="side-details"><div class="side-detail"><span>Prioridad</span><strong class="priority ${ticket.priority}">${escapeHtml(ticket.priority || "—")}</strong></div><div class="side-detail"><span>Estado</span>${statusBadge(operationalStatus(ticket))}</div><div class="side-detail"><span>Fecha de cierre</span><strong>${formatDate(ticket.closedAt)}</strong></div><div class="side-detail"><span>Verificado</span><strong>${escapeHtml(ticket.verified || "—")}</strong></div></div></article>
+      <article class="info-card side-card"><h2>Resumen operativo</h2><div class="assignee"><span class="mini-avatar system">${initials(requestedToLabel(ticket))}</span><div><strong>${escapeHtml(requestedToLabel(ticket))}</strong><span>Solicitado a</span></div></div><div class="sidebar-divider"></div><div class="side-details"><div class="side-detail"><span>Prioridad</span><strong class="priority ${ticket.priority}">${escapeHtml(ticket.priority || "—")}</strong></div><div class="side-detail"><span>Estado</span>${statusBadge(operationalStatus(ticket))}</div><div class="side-detail"><span>Fecha de cierre</span><strong>${formatDate(ticket.closedAt)}</strong></div><div class="side-detail"><span>Verificado</span><strong>${escapeHtml(ticket.verified || "—")}</strong></div></div></article>
       ${ticket.verification ? `<article class="info-card side-card"><h2>Verificación de Soporte</h2><div class="side-details"><div class="side-detail"><span>Verificado</span><strong>${escapeHtml(ticket.verified || "—")}</strong></div><div class="side-detail"><span>Verificado por</span><strong>${escapeHtml(ticket.verification.by)}</strong></div><div class="side-detail"><span>Fecha</span><strong>${formatDate(ticket.verification.date)}</strong></div></div><p class="internal-note">${escapeHtml(ticket.verification.observations || "Sin observaciones")}</p></article>` : ""}
     </aside>
   </div>`;
@@ -702,7 +702,7 @@ function handleDetailAction(action, id) {
   if (!ticket) return;
   if (action === "copy") { navigator.clipboard?.writeText(ticket.id); showToast(`${ticket.id} copiado`); return; }
   if (action === "edit") { openEditModal(ticket); return; }
-  if (action === "take") { ticket.status = STATUS.ANALYSIS; ticket.assignee = ticket.requestedTo || ticket.assignee || "Sistemas"; ticket.updatedAt = nowIso(); addHistory(ticket, "Proceso iniciado", "Requerimiento en proceso."); saveTickets(ticket); renderDetail(ticket); showToast("Proceso iniciado"); return; }
+  if (action === "take") { ticket.status = STATUS.ANALYSIS; ticket.assignee = requestedToLabel(ticket); ticket.updatedAt = nowIso(); addHistory(ticket, "Proceso iniciado", "Requerimiento en proceso."); saveTickets(ticket); renderDetail(ticket); showToast("Proceso iniciado"); return; }
   if (action === "resolve") { openResolutionModal(ticket); return; }
   if (action === "verify") { openVerificationModal(ticket); return; }
 }
@@ -716,7 +716,7 @@ function openEditModal(ticket) {
       '<label class="field"><span>Razón social <em>*</em></span><input name="customer" required value="' + escapeHtml(ticket.customer || "") + '" /></label>' +
       '<label class="field field-span-2"><span>Requerimiento <em>*</em></span><input name="subject" required value="' + escapeHtml(ticket.subject || "") + '" /></label>' +
       '<label class="field"><span>Operador <em>*</em></span><select name="operator" required>' + optionMarkup(OPERATORS, ticket.operator || ticket.createdBy) + '</select></label>' +
-      '<label class="field"><span>Solicitado a <em>*</em></span><select name="requestedTo" required>' + optionMarkup(REQUESTED_TO, ticket.requestedTo) + '</select></label>' +
+      '<div class="field field-span-2"><span>Solicitado a <em>*</em></span><div id="editRequestedToOptions" class="multi-choice-grid"></div><small class="field-help">Podés seleccionar una o más personas.</small></div>' +
       '<label class="field"><span>Prioridad</span><select name="priority">' + optionMarkup(["Alta", "Media", "Baja"], ticket.priority || "Media") + '</select></label>' +
       '<label class="field"><span>Estado</span><select name="operationalStatus">' + optionMarkup(EXCEL_STATUS, currentStatus) + '</select></label>' +
       '<label class="field"><span>Fecha de cierre</span><input type="date" name="closedDate" value="' + dateInputValue(ticket.closedAt) + '" /></label>' +
@@ -725,7 +725,7 @@ function openEditModal(ticket) {
     '</div>' +
     '<div class="form-footer"><button type="button" class="button button-secondary" data-close-modal>Cancelar</button><button type="submit" class="button button-primary">Guardar cambios</button></div>' +
   '</form>');
-  $("#editTicketForm", modal).addEventListener("submit", event => {
+  renderRequestedToOptions($("#editRequestedToOptions", modal), requestedToNames(ticket)); $("#editTicketForm", modal).addEventListener("submit", event => {
     event.preventDefault();
     const form = new FormData(event.target);
     const requestDate = form.get("requestDate");
@@ -736,8 +736,8 @@ function openEditModal(ticket) {
     ticket.subject = form.get("subject");
     ticket.operator = form.get("operator");
     ticket.createdBy = ticket.operator;
-    ticket.requestedTo = form.get("requestedTo");
-    ticket.assignee = ticket.assignee === "Sin asignar" ? ticket.requestedTo : ticket.assignee;
+    ticket.requestedTo = form.getAll("requestedTo");
+    ticket.assignee = ticket.assignee === "Sin asignar" ? requestedToLabel(ticket) : ticket.assignee;
     ticket.priority = form.get("priority");
     ticket.description = form.get("description") || ticket.subject;
     ticket.verified = nextVerified;
@@ -781,7 +781,7 @@ function syncRoleUi() {
 function openNotificationSettings() {
   if (activeRole !== "sistemas") return;
   const recipientRow = (recipient, index) => `<div class="recipient-row" data-recipient-row><label class="field"><span>Destinatario ${index + 1}</span><input type="text" data-recipient-name value="${escapeHtml(recipient.name)}" placeholder="Nombre" required /></label><label class="field"><span>Correo</span><input type="text" data-recipient-email value="${escapeHtml(recipient.email)}" placeholder="correo@empresa.com" inputmode="email" required /></label><button type="button" class="button button-secondary recipient-remove" data-remove-recipient ${notificationRecipients.length === 1 ? "disabled" : ""}>Quitar</button></div>`;
-  const modal = createModal("Destinatarios De Avisos", `<form id="notificationSettingsForm" class="modal-form"><div id="recipientList" class="recipient-list">${notificationRecipients.map(recipientRow).join("")}</div><button type="button" class="button button-secondary recipient-add" id="addRecipient">+ Agregar Destinatario</button><p class="field-help">Cada nuevo requerimiento se notificará a todos los destinatarios configurados. Los nombres permiten identificar a quién corresponde cada correo.</p><div class="form-footer"><button type="button" class="button button-secondary" data-close-modal>Cancelar</button><button type="submit" class="button button-primary">Guardar Destinatarios</button></div></form>`);
+  const modal = createModal("Personas Solicitadas", `<form id="notificationSettingsForm" class="modal-form"><div id="recipientList" class="recipient-list">${notificationRecipients.map(recipientRow).join("")}</div><button type="button" class="button button-secondary recipient-add" id="addRecipient">+ Agregar Persona</button><p class="field-help">Estas personas aparecerán en “Solicitado a”. Cada una puede tener su propio correo para recibir los avisos.</p><div class="form-footer"><button type="button" class="button button-secondary" data-close-modal>Cancelar</button><button type="submit" class="button button-primary">Guardar Personas</button></div></form>`);
   const list = $("#recipientList", modal);
   const renderRecipientRows = () => { list.innerHTML = notificationRecipients.map(recipientRow).join(""); };
   $("#addRecipient", modal).addEventListener("click", () => {
@@ -791,7 +791,7 @@ function openNotificationSettings() {
   list.addEventListener("click", event => {
     const remove = event.target.closest("[data-remove-recipient]");
     if (!remove || list.querySelectorAll("[data-recipient-row]").length === 1) return;
-    remove.closest("[data-recipient-row]")?.remove();
+    remove.closest("[data-recipient-row]")?.remove(); notificationRecipients = [...list.querySelectorAll("[data-recipient-row]")].map(row => ({ name: $(`[data-recipient-name]`, row).value.trim(), email: $(`[data-recipient-email]`, row).value.trim().toLowerCase() }));
   });
   $("#notificationSettingsForm", modal).addEventListener("submit", async event => {
     event.preventDefault();
@@ -807,9 +807,9 @@ function openNotificationSettings() {
       const response = await fetch(`${window.location.origin}/api/settings`, { method: "PUT", headers: { "Content-Type": "application/json", Accept: "application/json" }, body: JSON.stringify({ notificationRecipients: nextRecipients }) });
       const payload = await response.json().catch(() => ({}));
       if (!response.ok) throw new Error(payload.error || "No se pudieron guardar los destinatarios");
-      notificationRecipients = payload.notificationRecipients || nextRecipients;
+      notificationRecipients = payload.notificationRecipients || nextRecipients; renderRequestedToOptions($("#requestedToOptions"));
       closeModal();
-      showToast("Destinatarios de avisos actualizados");
+      showToast("Personas Solicitadas actualizados");
     } catch (error) {
       showToast(error.message || "No se pudo guardar el correo");
     }
@@ -818,10 +818,10 @@ function openNotificationSettings() {
 
 function openSystemsAccess() {
   const modal = createModal("Acceso a Sistemas", '<form id="systemsAccessForm" class="modal-form"><label class="field"><span>Contraseña <em>*</em></span><input type="password" name="password" required autocomplete="current-password" /></label><div class="form-footer"><button type="button" class="button button-secondary" data-close-modal>Cancelar</button><button type="submit" class="button button-primary">Ingresar</button></div></form>');
-  $("#systemsAccessForm", modal).addEventListener("submit", event => { event.preventDefault(); const form = new FormData(event.target); if (form.get("password") !== SYSTEM_PASSWORD) { showToast("Contraseña incorrecta"); return; } systemUnlocked = true; activeRole = "sistemas"; localStorage.setItem(ROLE_KEY, activeRole); $("#roleSelect").value = activeRole; syncRoleUi(); closeModal(); if (selectedTicketId && location.hash.startsWith("#ticket/")) renderDetail(ticketById(selectedTicketId)); showToast("Perfil Sistemas activo"); });
+  $("#systemsAccessForm", modal).addEventListener("submit", event => { event.preventDefault(); const form = new FormData(event.target); if (form.get("password") !== SYSTEM_PASSWORD) { showToast("Contraseña incorrecta"); return; } systemUnlocked = true; activeRole = "sistemas"; localStorage.setItem(ROLE_KEY, activeRole); renderRequestedToOptions($("#requestedToOptions")); $("#roleSelect").value = activeRole; syncRoleUi(); closeModal(); if (selectedTicketId && location.hash.startsWith("#ticket/")) renderDetail(ticketById(selectedTicketId)); showToast("Perfil Sistemas activo"); });
 }
 
-$("#roleSelect").value = activeRole;
+renderRequestedToOptions($("#requestedToOptions")); $("#roleSelect").value = activeRole;
 syncRoleUi();
 $("#notificationSettingsButton").addEventListener("click", openNotificationSettings);
 $("#roleSelect").addEventListener("change", event => { const nextRole = event.target.value; if (nextRole === "sistemas" && !systemUnlocked) { event.target.value = activeRole; openSystemsAccess(); return; } activeRole = nextRole; if (activeRole !== "sistemas") systemUnlocked = false; syncRoleUi(); localStorage.setItem(ROLE_KEY, activeRole); if (selectedTicketId && location.hash.startsWith("#ticket/")) renderDetail(ticketById(selectedTicketId)); else renderDashboard(); showToast(activeRole === "sistemas" ? "Perfil Sistemas activo" : "Perfil Soporte activo"); });
@@ -876,7 +876,7 @@ $("#newTicketForm").addEventListener("submit", async event => {
   }
   const number = nextTicketNumber();
   const operator = form.get("operator");
-  const requestedTo = form.get("requestedTo");
+  const requestedTo = form.getAll("requestedTo");
   const requestDate = form.get("requestDate") || todayInput();
   const created = String(requestDate) + "T12:00:00";
   const requestType = form.get("requestType");
@@ -889,8 +889,8 @@ $("#newTicketForm").addEventListener("submit", async event => {
     incidentOrigin: form.get("incidentOrigin"), affectedCompanies: form.get("affectedCompanies"), affectedEquipmentCount: form.get("affectedEquipmentCount"), incidentDays: form.get("incidentDays"), equipmentType: form.get("equipmentType"), legajoId: form.get("legajoId"), unitId: form.get("unitId"), equipmentPoints: form.get("equipmentPoints"), moduleUrl: form.get("moduleUrl"), observations: form.get("observations"), captureReference: form.get("captureReference"),
     improvementType: form.get("improvementType"), equipmentModification: form.get("equipmentModification"), scope: form.get("scope"), improvementModuleUrl: form.get("improvementModuleUrl"), improvementDescription: form.get("improvementDescription"), improvementCapture: form.get("improvementCapture"), urgency: form.get("urgency"),
     generalRequestType: form.get("generalRequestType"), redirectionCompany: form.get("redirectionCompany"), generalDescription: form.get("generalDescription"),
-    status: STATUS.ASSIGNED, assignee: requestedTo, createdAt: created, updatedAt: created, correctiveNumber: null, correctiveAction: "", correction: "", observation: "", resolution: "", actionTaken: "", systemsResponsible: "", verification: null, verified: "", closedAt: "",
-    history: [{ title: "Requerimiento registrado", text: "Registrado por " + operator + ".", date: created, complete: true }, { title: "Enviado a Sistemas", text: "El requerimiento fue enviado a " + requestedTo + ".", date: created, complete: true }, { title: "Proceso iniciado", text: "Pendiente de inicio.", date: null, complete: false }, { title: "Corrección registrada", text: "Pendiente de registrar la corrección.", date: null, complete: false }, { title: "Verificación de Soporte", text: "Pendiente de verificación.", date: null, complete: false }]
+    status: STATUS.ASSIGNED, assignee: requestedTo.join(", "), createdAt: created, updatedAt: created, correctiveNumber: null, correctiveAction: "", correction: "", observation: "", resolution: "", actionTaken: "", systemsResponsible: "", verification: null, verified: "", closedAt: "",
+    history: [{ title: "Requerimiento registrado", text: "Registrado por " + operator + ".", date: created, complete: true }, { title: "Enviado a Sistemas", text: "El requerimiento fue enviado a " + requestedTo.join(", ") + ".", date: created, complete: true }, { title: "Proceso iniciado", text: "Pendiente de inicio.", date: null, complete: false }, { title: "Corrección registrada", text: "Pendiente de registrar la corrección.", date: null, complete: false }, { title: "Verificación de Soporte", text: "Pendiente de verificación.", date: null, complete: false }]
   };
   const submitButton = event.target.querySelector('button[type="submit"]');
   submitButton.disabled = true;
@@ -917,3 +917,25 @@ window.addEventListener("hashchange", routeFromHash);
 routeFromHash();
 void loadRemoteTickets();
 void loadNotificationSettings();
+
+
+function normalizeRequestedTo(value) {
+  const values = Array.isArray(value) ? value : [value];
+  return [...new Set(values.map(item => String(item || "").trim()).filter(item => item && !["Sin asignar", "Sistemas"].includes(item)))];
+}
+
+function requestedToNames(ticket) {
+  return normalizeRequestedTo(ticket?.requestedTo);
+}
+
+function requestedToLabel(ticket) {
+  return requestedToNames(ticket).join(", ") || "Sin asignar";
+}
+
+
+function renderRequestedToOptions(container, selected = [], inputName = "requestedTo") {
+  if (!container) return;
+  const selectedNames = normalizeRequestedTo(selected);
+  const directory = notificationRecipients.length ? notificationRecipients : REQUESTED_TO.map(name => ({ name, email: "" }));
+  container.innerHTML = directory.map(recipient => `<label class="multi-choice"><input type="checkbox" name="${escapeHtml(inputName)}" value="${escapeHtml(recipient.name)}" ${selectedNames.includes(recipient.name) ? "checked" : ""} /><span>${escapeHtml(recipient.name)}</span></label>`).join("");
+}
