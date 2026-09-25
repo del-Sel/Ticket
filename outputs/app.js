@@ -26,7 +26,7 @@ const statusClass = {
   [STATUS.CLOSED]: "status-closed",
   Pendiente: "status-new",
   "En proceso": "status-analysis",
-  Finalizada: "status-closed"
+  Finalizada: "status-resolved"
 };
 
 const seedTickets = [
@@ -606,7 +606,7 @@ function renderDetail(ticket) {
       <article class="info-card timeline-card"><h2>Historial del requerimiento</h2><div class="timeline">${ticket.history.map(item => `<div class="timeline-item ${item.complete ? "complete" : ""}"><span class="timeline-dot"></span><div class="timeline-copy"><strong>${escapeHtml(item.title)}</strong><p>${escapeHtml(item.text)}</p><time>${item.date ? formatDate(item.date, true) : "Pendiente"}</time></div></div>`).join("")}</div></article>
     </div>
     <aside class="side-stack">
-      <article class="info-card side-card"><h2>Resumen operativo</h2><div class="assignee"><span class="mini-avatar system">${initials(ticket.requestedTo || ticket.assignee || "Sin asignar")}</span><div><strong>${escapeHtml(ticket.requestedTo || ticket.assignee || "Sin asignar")}</strong><span>Solicitado a</span></div></div><div class="sidebar-divider"></div><div class="side-details"><div class="side-detail"><span>Prioridad</span><strong class="priority ${ticket.priority}">${escapeHtml(ticket.priority || "—")}</strong></div><div class="side-detail"><span>Estado</span><strong>${operationalStatus(ticket)}</strong></div><div class="side-detail"><span>Fecha de cierre</span><strong>${formatDate(ticket.closedAt)}</strong></div><div class="side-detail"><span>Verificado</span><strong>${escapeHtml(ticket.verified || "—")}</strong></div></div></article>
+      <article class="info-card side-card"><h2>Resumen operativo</h2><div class="assignee"><span class="mini-avatar system">${initials(ticket.requestedTo || ticket.assignee || "Sin asignar")}</span><div><strong>${escapeHtml(ticket.requestedTo || ticket.assignee || "Sin asignar")}</strong><span>Solicitado a</span></div></div><div class="sidebar-divider"></div><div class="side-details"><div class="side-detail"><span>Prioridad</span><strong class="priority ${ticket.priority}">${escapeHtml(ticket.priority || "—")}</strong></div><div class="side-detail"><span>Estado</span>${statusBadge(operationalStatus(ticket))}</div><div class="side-detail"><span>Fecha de cierre</span><strong>${formatDate(ticket.closedAt)}</strong></div><div class="side-detail"><span>Verificado</span><strong>${escapeHtml(ticket.verified || "—")}</strong></div></div></article>
       ${ticket.verification ? `<article class="info-card side-card"><h2>Verificación de Soporte</h2><div class="side-details"><div class="side-detail"><span>Verificado</span><strong>${escapeHtml(ticket.verified || "—")}</strong></div><div class="side-detail"><span>Verificado por</span><strong>${escapeHtml(ticket.verification.by)}</strong></div><div class="side-detail"><span>Fecha</span><strong>${formatDate(ticket.verification.date)}</strong></div></div><p class="internal-note">${escapeHtml(ticket.verification.observations || "Sin observaciones")}</p></article>` : ""}
     </aside>
   </div>`;
