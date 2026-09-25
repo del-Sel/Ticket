@@ -413,8 +413,8 @@ function syncRequestChoice() {
 }
 
 function syncRequestForm() {
-  const requestType = $("#requestType")?.value || "";
-  const incidentOrigin = $("#incidentOrigin")?.value || "";
+  const requestType = $("#requestType")?.value || "";  const incidentOrigin = $("#incidentOrigin")?.value || "";
+  const equipmentType = $("#equipmentType")?.value || "";
   const generalRequestType = $("#generalRequestType")?.value || "";
   $$('[data-request-section]').forEach(section => {
     const visible = section.dataset.requestSection === requestType;
@@ -427,9 +427,14 @@ function syncRequestForm() {
   if (systemDetails) {
     systemDetails.hidden = !showSystemDetails;
     setConditionalRequired(systemDetails, showSystemDetails && wizardStep === 2);
+  }  const equipmentOtherDetails = $("[data-equipment-other-only]");
+  const showEquipmentOther = showSystemDetails && equipmentType === "Otro";
+  if (equipmentOtherDetails) {
+    equipmentOtherDetails.hidden = !showEquipmentOther;
+    setConditionalRequired(equipmentOtherDetails, showEquipmentOther && wizardStep === 2);
   }
 
-  const equipmentDetails = $("[data-error-equipment-only]");
+    const equipmentDetails = $("[data-error-equipment-only]");
   if (equipmentDetails) equipmentDetails.hidden = !(requestType === "Reporte de error" && incidentOrigin === "Equipo");
 
   const redirectionDetails = $("[data-general-redirection-only]");
@@ -851,8 +856,8 @@ $("#requestType").addEventListener("change", syncRequestForm);
 $$('[data-request-choice]').forEach(choice => choice.addEventListener("click", () => {
   $("#requestType").value = choice.dataset.requestChoice;
   syncRequestForm();
-}));
-$("#incidentOrigin").addEventListener("change", syncRequestForm);
+}));$("#incidentOrigin").addEventListener("change", syncRequestForm);
+$("#equipmentType")?.addEventListener("change", syncRequestForm);
 $("#generalRequestType").addEventListener("change", syncRequestForm);
 $("#wizardBack").addEventListener("click", () => {
   if (wizardStep === 1) { location.hash = "dashboard"; return; }
@@ -886,7 +891,7 @@ $("#newTicketForm").addEventListener("submit", async event => {
     customer: form.get("customer"), contact: "", subject: form.get("subject"),
     typology: requestType, requestType, sourceSector: "Soporte", operator, createdBy: operator, requestedTo,
     priority: form.get("priority"), targetDate: "", description, immediateAction: "",
-    incidentOrigin: form.get("incidentOrigin"), affectedCompanies: form.get("affectedCompanies"), affectedEquipmentCount: form.get("affectedEquipmentCount"), incidentDays: form.get("incidentDays"), equipmentType: form.get("equipmentType"), legajoId: form.get("legajoId"), unitId: form.get("unitId"), equipmentPoints: form.get("equipmentPoints"), moduleUrl: form.get("moduleUrl"), observations: form.get("observations"), captureReference: form.get("captureReference"),
+    incidentOrigin: form.get("incidentOrigin"), affectedCompanies: form.get("affectedCompanies"), affectedEquipmentCount: form.get("affectedEquipmentCount"), incidentDays: form.get("incidentDays"), equipmentType: form.get("equipmentType") === "Otro" ? form.get("equipmentTypeOther") : form.get("equipmentType"), legajoId: form.get("legajoId"), unitId: form.get("unitId"), equipmentPoints: form.get("equipmentPoints"), moduleUrl: form.get("moduleUrl"), observations: form.get("observations"), captureReference: form.get("captureReference"),
     improvementType: form.get("improvementType"), equipmentModification: form.get("equipmentModification"), scope: form.get("scope"), improvementModuleUrl: form.get("improvementModuleUrl"), improvementDescription: form.get("improvementDescription"), improvementCapture: form.get("improvementCapture"), urgency: form.get("urgency"),
     generalRequestType: form.get("generalRequestType"), redirectionCompany: form.get("redirectionCompany"), generalDescription: form.get("generalDescription"),
     status: STATUS.ASSIGNED, assignee: requestedTo.join(", "), createdAt: created, updatedAt: created, correctiveNumber: null, correctiveAction: "", correction: "", observation: "", resolution: "", actionTaken: "", systemsResponsible: "", verification: null, verified: "", closedAt: "",
