@@ -38,33 +38,35 @@ async function notificationEmail(env) {
 
 async function sendTicketNotification(env, ticket) {
   const recipient = await notificationEmail(env);
-  const from = env.NOTIFICATION_FROM || "procesosfulmar@gmail.com";
-  const apiKey = env.RESEND_API_KEY;
-  if (!apiKey) return { sent: false, configured: false, recipient };
-  const subject = "Nuevo Requerimiento " + ticket.id + " - " + (ticket.customer || "Sin Razón Social");
+  const mailer = env.PROCESS_MAILER;
+  const mailToken = env.REPORT_MAIL_TOKEN;
+  if (!mailer || !mailToken) return { sent: false, configured: false, recipient };
+  const subject = `Nuevo Requerimiento ${ticket.id} - ${ticket.customer || "Sin Razón Social"}`;
   const text = [
     subject,
-    "Fecha: " + (ticket.createdAt || "—"),
-    "Razón Social: " + (ticket.customer || "—"),
-    "Requerimiento: " + (ticket.subject || "—"),
-    "Operador: " + (ticket.operator || ticket.createdBy || "—"),
-    "Solicitado A: " + (ticket.requestedTo || "—"),
-    "Prioridad: " + (ticket.priority || "—"),
+    `Fecha: ${ticket.createdAt || "—"}`,
+    `Razón Social: ${ticket.customer || "—"}`,
+    `Requerimiento: ${ticket.subject || "—"}`,
+    `Operador: ${ticket.operator || ticket.createdBy || "—"}`,
+    `Solicitado a: ${ticket.requestedTo || "—"}`,
+    `Prioridad: ${ticket.priority || "—"}`,
     "",
     ticket.description || ""
   ].join("\n");
-  const html = "<h2>" + escapeHtml(subject) + "</h2><p><strong>Fecha:</strong> " + escapeHtml(ticket.createdAt || "—") + "</p><p><strong>Razón Social:</strong> " + escapeHtml(ticket.customer || "—") + "</p><p><strong>Requerimiento:</strong> " + escapeHtml(ticket.subject || "—") + "</p><p><strong>Operador:</strong> " + escapeHtml(ticket.operator || ticket.createdBy || "—") + "</p><p><strong>Solicitado A:</strong> " + escapeHtml(ticket.requestedTo || "—") + "</p><p><strong>Prioridad:</strong> " + escapeHtml(ticket.priority || "—") + "</p><hr /><p>" + escapeHtml(ticket.description || "") + "</p>";
-  const response = await fetch("https://api.resend.com/emails", {
+  const html = `<h2>${escapeHtml(subject)}</h2><p><strong>Fecha:</strong> ${escapeHtml(ticket.createdAt || "—")}</p><p><strong>Razón Social:</strong> ${escapeHtml(ticket.customer || "—")}</p><p><strong>Requerimiento:</strong> ${escapeHtml(ticket.subject || "—")}</p><p><strong>Operador:</strong> ${escapeHtml(ticket.operator || ticket.createdBy || "—")}</p><p><strong>Solicitado a:</strong> ${escapeHtml(ticket.requestedTo || "—")}</p><p><strong>Prioridad:</strong> ${escapeHtml(ticket.priority || "—")}</p><hr /><p>${escapeHtml(ticket.description || "")}</p>`;
+  const response = await mailer.fetch("https://internal/api/report-email", {
     method: "POST",
-    headers: { Authorization: "Bearer " + apiKey, "Content-Type": "application/json" },
-    body: JSON.stringify({ from, to: [recipient], subject, text, html })
+    headers: {
+      "Content-Type": "application/json",
+      "X-Report-Mail-Token": mailToken
+    },
+    body: JSON.stringify({ to: recipient, subject, text, html })
   });
-  if (!response.ok) {
-    const error = await response.text();
-    return { sent: false, configured: true, recipient, error };
-  }
   const result = await response.json().catch(() => ({}));
-  return { sent: true, configured: true, recipient, messageId: result?.id || "" };
+  if (!response.ok) {
+    return { sent: false, configured: true, recipient, error: result?.error || "No se pudo enviar el aviso" };
+  }
+  return { sent: true, configured: true, recipient, messageId: result?.messageId || "" };
 }
 
 export async function onRequestGet({ env }) {
