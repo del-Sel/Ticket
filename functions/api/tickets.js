@@ -67,8 +67,8 @@ async function notificationRecipients(env) {
 }
 
 async function sendTicketNotification(env, ticket) {
-  const recipients = await notificationRecipients(env);
-  const recipientEmails = recipients.map(item => item.email).join(", ");
+  const directory = await notificationRecipients(env); const requestedNames = Array.isArray(ticket.requestedTo) ? ticket.requestedTo.map(item => String(item || "").trim()) : [String(ticket.requestedTo || "").trim()]; const selectedRecipients = directory.filter(item => requestedNames.includes(item.name)); const recipients = selectedRecipients.length ? selectedRecipients : directory;
+  const recipientEmails = [...new Set(recipients.map(item => item.email))].join(", ");
   const mailer = env.PROCESS_MAILER;
   const mailToken = env.REPORT_MAIL_TOKEN;
   if (!mailer || !mailToken) return { sent: false, configured: false, recipients: recipientEmails };
@@ -79,12 +79,12 @@ async function sendTicketNotification(env, ticket) {
     `Razón Social: ${ticket.customer || "—"}`,
     `Requerimiento: ${ticket.subject || "—"}`,
     `Operador: ${ticket.operator || ticket.createdBy || "—"}`,
-    `Solicitado a: ${ticket.requestedTo || "—"}`,
+    `Solicitado a: ${(Array.isArray(ticket.requestedTo) ? ticket.requestedTo : [ticket.requestedTo]).filter(Boolean).join(", ") || "—"}`,
     `Prioridad: ${ticket.priority || "—"}`,
     "",
     ticket.description || ""
   ].join("\n");
-  const html = `<h2>${escapeHtml(subject)}</h2><p><strong>Fecha:</strong> ${escapeHtml(ticket.createdAt || "—")}</p><p><strong>Razón Social:</strong> ${escapeHtml(ticket.customer || "—")}</p><p><strong>Requerimiento:</strong> ${escapeHtml(ticket.subject || "—")}</p><p><strong>Operador:</strong> ${escapeHtml(ticket.operator || ticket.createdBy || "—")}</p><p><strong>Solicitado a:</strong> ${escapeHtml(ticket.requestedTo || "—")}</p><p><strong>Prioridad:</strong> ${escapeHtml(ticket.priority || "—")}</p><hr /><p>${escapeHtml(ticket.description || "")}</p>`;
+  const html = `<h2>${escapeHtml(subject)}</h2><p><strong>Fecha:</strong> ${escapeHtml(ticket.createdAt || "—")}</p><p><strong>Razón Social:</strong> ${escapeHtml(ticket.customer || "—")}</p><p><strong>Requerimiento:</strong> ${escapeHtml(ticket.subject || "—")}</p><p><strong>Operador:</strong> ${escapeHtml(ticket.operator || ticket.createdBy || "—")}</p><p><strong>Solicitado a:</strong> ${escapeHtml((Array.isArray(ticket.requestedTo) ? ticket.requestedTo : [ticket.requestedTo]).filter(Boolean).join(", ") || "—")}</p><p><strong>Prioridad:</strong> ${escapeHtml(ticket.priority || "—")}</p><hr /><p>${escapeHtml(ticket.description || "")}</p>`;
   const response = await mailer.fetch("https://internal/api/report-email", {
     method: "POST",
     headers: {
