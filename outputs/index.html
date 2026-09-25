@@ -15,7 +15,7 @@
           <span class="brand-title">Seguimiento de Requerimientos a Sistemas</span>
         </a>
         <div class="topbar-actions">
-          <button id="notificationSettingsButton" class="button button-secondary hidden" type="button">Configurar Correo</button>
+          <button id="notificationSettingsButton" class="button button-secondary hidden" type="button">Configurar Destinatarios</button>
           <label class="role-switcher">
             <span>Perfil</span>
             <select id="roleSelect" aria-label="Perfil activo">
@@ -163,7 +163,7 @@
                     <label class="field"><span>Empresa / Razón Social <em>*</em></span><input name="customer" required placeholder="Nombre De La Empresa" /></label>
                     <label class="field field-span-2"><span>Requerimiento <em>*</em></span><input name="subject" required placeholder="Título Breve Del Requerimiento" /></label>
                     <label class="field"><span>Operador <em>*</em></span><select name="operator" required><option value="Cristian Sievert">Cristian Sievert</option><option value="Santiago del Sel">Santiago Del Sel</option><option value="Ramiro Urgorri">Ramiro Urgorri</option></select></label>
-                    <label class="field"><span>Solicitado A <em>*</em></span><select name="requestedTo" required><option value="Marcos Barlotti">Marcos Barlotti</option></select></label>
+                    <div class="field field-span-2"><span>Solicitado A <em>*</em></span><div id="requestedToOptions" class="multi-choice-grid"></div><small class="field-help">Seleccioná una o más personas. Sistemas recibirá el aviso según las personas elegidas.</small></div>
                     <label class="field field-span-2"><span>Información Adicional</span><textarea name="description" rows="4" placeholder="Antecedentes O Información Adicional Del Caso"></textarea></label>
                     <label class="field field-span-2 attachment-field"><span>Adjuntos / Fotos</span><input id="attachments" type="file" name="attachments" accept="image/*" multiple /><small class="field-help">Hasta 5 Imágenes. Podés Seleccionar Archivos O Pegar Una Captura Con Ctrl+V.</small><div id="attachmentPreview" class="attachment-preview" aria-live="polite"></div></label>
                   </div>
