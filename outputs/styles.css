@@ -87,7 +87,7 @@ a { color: inherit; text-decoration: none; }
 .attachment-card:hover { border-color: #3c718e; }
 .attachment-card img { width: 100%; aspect-ratio: 4 / 3; object-fit: cover; border-radius: 2px; background: #e8edf1; }
 .attachment-card span { overflow: hidden; color: var(--muted); font-size: 10px; text-overflow: ellipsis; white-space: nowrap; }
-@media (max-width: 680px) { .attachment-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+
 .form-card-heading p { display: block; margin: 4px 0 0; color: var(--muted); font-size: 11px; line-height: 1.35; }
 .wizard-progress { display: flex; align-items: center; gap: 10px; margin: -2px 0 24px; padding-bottom: 16px; border-bottom: 1px solid #e3e8ed; }
 .wizard-progress-item { display: flex; align-items: center; gap: 8px; color: var(--muted); font-size: 11px; }
@@ -132,7 +132,6 @@ a { color: inherit; text-decoration: none; }
 
 @media (max-width: 820px) { .request-choice-grid, .systems-board-columns { grid-template-columns: 1fr; }.systems-board-heading { align-items: flex-start; flex-direction: column; }.wizard-progress-line { flex-basis: 35px; } }
 
-
 /* Lectura rápida de estados */
 .summary-card { position: relative; overflow: hidden; box-shadow: 0 1px 2px rgba(31,39,48,.04); }
 .summary-card::before { content: ""; position: absolute; inset: 0 0 auto; height: 3px; background: var(--header); }
@@ -162,3 +161,10 @@ a { color: inherit; text-decoration: none; }
 .side-detail { align-items: center; }.side-detail .status-badge { margin-left: auto; }
 .board-pending { background: #fbfdff; border-color: #d2e1eb; }.board-progress { background: #fffdf4; border-color: #eadcae; }.board-finished { background: #f5fbf6; border-color: #c7e0cd; }
 .board-pending .systems-board-column-heading { border-top-color: #2a668e; }.board-progress .systems-board-column-heading { border-top-color: #c79219; }.board-finished .systems-board-column-heading { border-top-color: var(--green); }
+.recipient-list { display: grid; gap: 10px; }
+.recipient-row { display: grid; grid-template-columns: 1fr 1.35fr auto; align-items: end; gap: 9px; padding: 11px; border: 1px solid var(--line); border-radius: 3px; background: #f8fafb; }
+.recipient-row .field { min-width: 0; }
+.recipient-remove { min-height: 34px; white-space: nowrap; }
+.recipient-remove:disabled { opacity: .55; cursor: not-allowed; }
+.recipient-add { justify-self: start; }
+@media (max-width: 680px) { .recipient-row { grid-template-columns: 1fr; }.recipient-remove { justify-self: start; } }

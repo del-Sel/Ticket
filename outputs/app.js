@@ -167,7 +167,12 @@ let sortKey = "number";
 let sortDirection = "asc";
 let selectedTicketId = null;
 let wizardStep = 1;
-let notificationEmail = "santiagotdelsel@gmail.com";
+let notificationRecipients = [
+  { name: "Santiago del Sel", email: "santiagotdelsel@gmail.com" },
+  { name: "Franco Barrios", email: "santiagotdelsel@gmail.com" },
+  { name: "Gastón Paz", email: "santiagotdelsel@gmail.com" }
+];
+
 const $ = (selector, root = document) => root.querySelector(selector);
 const $$ = (selector, root = document) => [...root.querySelectorAll(selector)];
 
@@ -244,8 +249,8 @@ async function loadRemoteTickets() {
 }
 
 async function saveRemoteTicket(ticket, method = "PUT") {
-  const url = method === "POST" ? apiUrl() : apiUrl() + "/" + encodeURIComponent(ticket.id);
-  if (!url) return null;
+  const url = method === "POST" ? apiUrl() : `${apiUrl()}/${encodeURIComponent(ticket.id)}`;
+  if (!url) return;
   try {
     const response = await fetch(url, {
       method,
@@ -253,7 +258,7 @@ async function saveRemoteTicket(ticket, method = "PUT") {
       body: JSON.stringify(ticket)
     });
     const payload = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error("API " + response.status);
+    if (!response.ok) throw new Error(`API ${response.status}`);
     return payload;
   } catch (error) {
     showToast("El requerimiento quedó guardado localmente, pero no se pudo sincronizar");
@@ -265,14 +270,19 @@ async function loadNotificationSettings() {
   const url = apiUrl();
   if (!url) return;
   try {
-    const response = await fetch(window.location.origin + "/api/settings", { headers: { Accept: "application/json" } });
+    const response = await fetch(`${window.location.origin}/api/settings`, { headers: { Accept: "application/json" } });
     if (!response.ok) return;
     const settings = await response.json();
-    if (settings.notificationEmail) notificationEmail = settings.notificationEmail;
+    if (Array.isArray(settings.notificationRecipients) && settings.notificationRecipients.length) {
+      notificationRecipients = settings.notificationRecipients;
+    } else if (settings.notificationEmail) {
+      notificationRecipients = [{ name: "Santiago del Sel", email: settings.notificationEmail }];
+    }
   } catch (error) {
     // Se conserva el correo inicial hasta que la API esté disponible.
   }
 }
+
 function attachmentApiUrl() {
   return ["http:", "https:"].includes(window.location.protocol) ? window.location.origin + "/api/attachments" : null;
 }
@@ -353,7 +363,8 @@ function nowIso() { return new Date().toISOString(); }
 function todayInput() { return new Date().toISOString().slice(0, 10); }
 function initials(name = "") { return name.split(/\s+/).filter(Boolean).slice(0, 2).map(part => part[0]).join("").toUpperCase() || "--"; }
 function formatDate(value, withTime = false) {
-  if (!value) return "—";  const date = new Date(value.includes("T") ? value : `${value}T12:00:00`);
+  if (!value) return "—";
+  const date = new Date(value.includes("T") ? value : `${value}T12:00:00`);
   const base = new Intl.DateTimeFormat("es-AR", { day: "2-digit", month: "2-digit", year: "numeric" }).format(date);
   if (!withTime) return base;
   return `${base} · ${new Intl.DateTimeFormat("es-AR", { hour: "2-digit", minute: "2-digit" }).format(date)}`;
@@ -523,7 +534,8 @@ function updateSortIndicators() {
   });
 }
 
-function renderSystemsBoard(visible) {  const board = $("#systemsBoard");
+function renderSystemsBoard(visible) {
+  const board = $("#systemsBoard");
   if (!board) return;
   const showBoard = activeRole === "sistemas";
   board.classList.toggle("hidden", !showBoard);
@@ -532,11 +544,11 @@ function renderSystemsBoard(visible) {  const board = $("#systemsBoard");
     return;
   }
   const columns = [
-    { status: "Pendiente", label: "Pendientes", hint: "Esperando que Sistemas tome el requerimiento", className: "board-pending" },
-    { status: "En proceso", label: "En proceso", hint: "Requerimientos que ya están siendo trabajados", className: "board-progress" },
+    { status: "Pendiente", label: "Pendientes", hint: "Esperando que Sistemas tome el Requerimiento", className: "board-pending" },
+    { status: "En proceso", label: "En Proceso", hint: "Requerimientos que ya están siendo trabajados", className: "board-progress" },
     { status: "Finalizada", label: "Finalizadas", hint: "Listas para verificación o ya verificadas", className: "board-finished" }
   ];
-  board.innerHTML = `<div class="systems-board-heading"><div><span class="eyebrow">Vista operativa</span><h2>Trabajo de Sistemas</h2><p>Seleccioná un requerimiento para ver toda la información y actualizar su estado.</p></div><span class="systems-board-count">${visible.length} visibles</span></div><div class="systems-board-columns">${columns.map(column => {
+  board.innerHTML = `<div class="systems-board-heading"><div><span class="eyebrow">Vista Operativa</span><h2>Trabajo de Sistemas</h2><p>Seleccioná un Requerimiento para ver toda la Información y actualizar su Estado.</p></div><span class="systems-board-count">${visible.length} visibles</span></div><div class="systems-board-columns">${columns.map(column => {
     const items = visible.filter(ticket => operationalStatus(ticket) === column.status);
     return `<section class="systems-board-column ${column.className}"><div class="systems-board-column-heading"><div><h3>${column.label}</h3><span>${column.hint}</span></div><strong>${items.length}</strong></div><div class="systems-board-list">${items.length ? items.map(ticket => `<button type="button" class="systems-board-card" data-board-ticket="${escapeHtml(ticket.id)}"><span class="board-card-top"><strong>${recordLabel(ticket)}</strong>${statusBadge(column.status)}</span><span class="board-card-subject">${escapeHtml(ticket.subject || "Sin título")}</span><span class="board-card-meta">${escapeHtml(ticket.customer || "Sin empresa")} · ${escapeHtml(ticket.priority || "Sin prioridad")}</span><span class="board-card-date">${column.status === "Finalizada" && ticket.verified === "Si" ? "Verificada" : column.status === "Finalizada" ? "Pendiente de verificación" : formatDate(ticket.createdAt)}</span></button>`).join("") : `<div class="systems-board-empty">No hay requerimientos</div>`}</div></section>`;
   }).join("")}</div>`;
@@ -692,7 +704,8 @@ function handleDetailAction(action, id) {
   if (action === "edit") { openEditModal(ticket); return; }
   if (action === "take") { ticket.status = STATUS.ANALYSIS; ticket.assignee = ticket.requestedTo || ticket.assignee || "Sistemas"; ticket.updatedAt = nowIso(); addHistory(ticket, "Proceso iniciado", "Requerimiento en proceso."); saveTickets(ticket); renderDetail(ticket); showToast("Proceso iniciado"); return; }
   if (action === "resolve") { openResolutionModal(ticket); return; }
-  if (action === "verify") { openVerificationModal(ticket); return; }}
+  if (action === "verify") { openVerificationModal(ticket); return; }
+}
 
 function openEditModal(ticket) {
   const currentStatus = operationalStatus(ticket);
@@ -762,25 +775,41 @@ function nextTicketNumber() { return Math.max(0, ...tickets.map(recordNumber)) +
 function nextCorrectiveNumber() { return Math.max(0, ...tickets.map(ticket => ticket.correctiveNumber || 0)) + 1; }
 
 function syncRoleUi() {
-  const button = $("#notificationSettingsButton");
-  if (button) button.classList.toggle("hidden", activeRole !== "sistemas");
+  $("#notificationSettingsButton")?.classList.toggle("hidden", activeRole !== "sistemas");
 }
 
 function openNotificationSettings() {
   if (activeRole !== "sistemas") return;
-  const modal = createModal("Configurar Correo", '<form id="notificationSettingsForm" class="modal-form"><label class="field"><span>Correo de Avisos <em>*</em></span><input type="email" name="notificationEmail" required value="' + escapeHtml(notificationEmail) + '" placeholder="correo@empresa.com" /></label><p class="field-help">Cada nuevo requerimiento se notificará a esta dirección.</p><div class="form-footer"><button type="button" class="button button-secondary" data-close-modal>Cancelar</button><button type="submit" class="button button-primary">Guardar Correo</button></div></form>');
+  const recipientRow = (recipient, index) => `<div class="recipient-row" data-recipient-row><label class="field"><span>Destinatario ${index + 1}</span><input type="text" data-recipient-name value="${escapeHtml(recipient.name)}" placeholder="Nombre" required /></label><label class="field"><span>Correo</span><input type="email" data-recipient-email value="${escapeHtml(recipient.email)}" placeholder="correo@empresa.com" required /></label><button type="button" class="button button-secondary recipient-remove" data-remove-recipient ${notificationRecipients.length === 1 ? "disabled" : ""}>Quitar</button></div>`;
+  const modal = createModal("Destinatarios De Avisos", `<form id="notificationSettingsForm" class="modal-form"><div id="recipientList" class="recipient-list">${notificationRecipients.map(recipientRow).join("")}</div><button type="button" class="button button-secondary recipient-add" id="addRecipient">+ Agregar Destinatario</button><p class="field-help">Cada nuevo requerimiento se notificará a todos los destinatarios configurados. Los nombres permiten identificar a quién corresponde cada correo.</p><div class="form-footer"><button type="button" class="button button-secondary" data-close-modal>Cancelar</button><button type="submit" class="button button-primary">Guardar Destinatarios</button></div></form>`);
+  const list = $("#recipientList", modal);
+  const renderRecipientRows = () => { list.innerHTML = notificationRecipients.map(recipientRow).join(""); };
+  $("#addRecipient", modal).addEventListener("click", () => {
+    notificationRecipients = [...notificationRecipients, { name: "", email: "" }];
+    renderRecipientRows();
+  });
+  list.addEventListener("click", event => {
+    const remove = event.target.closest("[data-remove-recipient]");
+    if (!remove || list.querySelectorAll("[data-recipient-row]").length === 1) return;
+    remove.closest("[data-recipient-row]")?.remove();
+  });
   $("#notificationSettingsForm", modal).addEventListener("submit", async event => {
     event.preventDefault();
-    const form = new FormData(event.target);
-    const nextEmail = String(form.get("notificationEmail") || "").trim().toLowerCase();
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(nextEmail)) { showToast("Ingresá un correo válido"); return; }
+    const nextRecipients = [...list.querySelectorAll("[data-recipient-row]")].map(row => ({
+      name: $("[data-recipient-name]", row).value.trim(),
+      email: $("[data-recipient-email]", row).value.trim().toLowerCase()
+    }));
+    if (!nextRecipients.length || nextRecipients.some(recipient => !recipient.name || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(recipient.email))) {
+      showToast("Completá el nombre y un correo válido en cada destinatario");
+      return;
+    }
     try {
-      const response = await fetch(window.location.origin + "/api/settings", { method: "PUT", headers: { "Content-Type": "application/json", Accept: "application/json" }, body: JSON.stringify({ notificationEmail: nextEmail }) });
+      const response = await fetch(`${window.location.origin}/api/settings`, { method: "PUT", headers: { "Content-Type": "application/json", Accept: "application/json" }, body: JSON.stringify({ notificationRecipients: nextRecipients }) });
       const payload = await response.json().catch(() => ({}));
-      if (!response.ok) throw new Error(payload.error || "No se pudo guardar el correo");
-      notificationEmail = payload.notificationEmail || nextEmail;
+      if (!response.ok) throw new Error(payload.error || "No se pudieron guardar los destinatarios");
+      notificationRecipients = payload.notificationRecipients || nextRecipients;
       closeModal();
-      showToast("Correo de avisos actualizado");
+      showToast("Destinatarios de avisos actualizados");
     } catch (error) {
       showToast(error.message || "No se pudo guardar el correo");
     }
