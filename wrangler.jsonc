@@ -1,0 +1,25 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "fulmar-tickets",
+  "pages_build_output_dir": "./outputs",
+  "compatibility_date": "2026-09-24",
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "fulmar-tickets-db",
+      "database_id": "85f7312d-359a-4bbf-9a1e-7a1254a8f1a3"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "binding": "ATTACHMENTS",
+      "bucket_name": "fulmar-wiki"
+    }
+  ],
+  "services": [
+    {
+      "binding": "PROCESS_MAILER",
+      "service": "orden-compra-ztx"
+    }
+  ]
+}
