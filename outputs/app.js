@@ -2,7 +2,7 @@ const STORAGE_KEY = "fulmar-reclamos-v1";
 const ROLE_KEY = "fulmar-role-v1";
 const API_PATH = "/api/tickets";const SYSTEM_PASSWORD = "S5327";
 const OPERATORS = ["Cristian Sievert", "Santiago del Sel", "Ramiro Urgorri"];
-const REQUESTED_TO = ["Santiago del Sel", "Franco Barrios", "Gastón Paz"];
+const REQUESTED_TO = ["Franco Barrios", "Gastón Paz", "Marcos Barlotti", "Nathalia Dominguez", "Javier Marisco"];
 const EXCEL_STATUS = ["Pendiente", "En proceso", "Finalizada"];
 const VERIFICATION_OPTIONS = ["Si", "No"];
 const MAX_ATTACHMENT_FILES = 5;
@@ -275,7 +275,7 @@ async function loadNotificationSettings() {
     if (Array.isArray(settings.notificationRecipients) && settings.notificationRecipients.length) {
       notificationRecipients = settings.notificationRecipients; renderRequestedToOptions($("#requestedToOptions"));
     } else if (settings.notificationEmail) {
-      notificationRecipients = [{ name: "Santiago del Sel", email: settings.notificationEmail }]; renderRequestedToOptions($("#requestedToOptions"));
+      notificationRecipients = [{ name: "Franco Barrios", email: settings.notificationEmail }]; renderRequestedToOptions($("#requestedToOptions"));
     }
   } catch (error) {
     // Se conserva el correo inicial hasta que la API esté disponible.
