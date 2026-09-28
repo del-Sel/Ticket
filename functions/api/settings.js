@@ -1,9 +1,5 @@
 const DEFAULT_NOTIFICATION_EMAIL = "santiagotdelsel@gmail.com";
-const DEFAULT_NOTIFICATION_RECIPIENTS = [
-  { name: "Santiago del Sel", email: DEFAULT_NOTIFICATION_EMAIL },
-  { name: "Franco Barrios", email: DEFAULT_NOTIFICATION_EMAIL },
-  { name: "Gastón Paz", email: DEFAULT_NOTIFICATION_EMAIL }
-];
+const DEFAULT_NOTIFICATION_RECIPIENTS = [{ name: "Franco Barrios", email: DEFAULT_NOTIFICATION_EMAIL }, { name: "Gastón Paz", email: DEFAULT_NOTIFICATION_EMAIL }, { name: "Marcos Barlotti", email: DEFAULT_NOTIFICATION_EMAIL }, { name: "Nathalia Dominguez", email: DEFAULT_NOTIFICATION_EMAIL }, { name: "Javier Marisco", email: DEFAULT_NOTIFICATION_EMAIL }];
 
 function json(data, status = 200) {
   return new Response(JSON.stringify(data), {
@@ -61,7 +57,7 @@ export async function onRequestPut({ request, env }) {
   const rawRecipients = Array.isArray(body?.notificationRecipients)
     ? body.notificationRecipients
     : body?.notificationEmail
-      ? [{ name: "Santiago del Sel", email: body.notificationEmail }]
+      ? [{ name: "Franco Barrios", email: body.notificationEmail }]
       : [];
   const notificationRecipients = normalizeRecipients(rawRecipients);
   if (!notificationRecipients.length || notificationRecipients.length !== rawRecipients.length) {
